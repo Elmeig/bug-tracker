@@ -1,7 +1,7 @@
 # Documentación del Proyecto Bug Tracker
 
-> **Versión de la documentación:** 2.0 — Ampliada con historial completo de errores y lecciones aprendidas
-> **Fecha de última actualización:** 16 de mayo de 2026
+> **Versión de la documentación:** 2.1 — Ampliada con historial completo de errores y lecciones aprendidas
+> **Fecha de última actualización:** 17 de mayo de 2026
 
 ---
 
@@ -1259,6 +1259,72 @@ bug-tracker/
 
 ---
 
+
+---
+
+## 🆕 Fase 6: Rol Manager + Sistema de Followers (v5.0)
+
+### Resumen
+Se añadió un nuevo rol "manager" con notificaciones globales y un sistema de seguidores (followers) para que cualquier usuario pueda suscribirse a actualizaciones de tareas sin estar asignado a ellas.
+
+### 6.1 Rol Manager
+
+**Propósito:** Un nivel intermedio entre admin y usuario. El manager recibe notificaciones de **todos** los cambios en la aplicación, pero no tiene permisos administrativos (no puede borrar usuarios ni cambiar roles).
+
+**Cambios en backend (`server.js`):**
+- Endpoint `PATCH /api/users/:id/role` — solo admin. Body: `{ "role": "manager" }` o `{ "role": "user" }`. No permite cambiar el rol de un admin.
+- Los managers reciben notificación de **cualquier cambio** (creación, edición, resolución, comentarios) — igual que el admin.
+- El endpoint `PUT /api/comments` restringe la edición a autor y admin (los managers NO pueden editar comentarios ajenos).
+
+**Cambios en frontend (`app.js`):**
+- `Auth.isManager` — getter que comprueba `role === 'manager'`
+- Panel de admin (`renderAdminPanel`): badge "MANAGER" naranja + botón ⭐/👤 para promover/quitar manager
+- Event handler `toggle-role` con llamada al endpoint `PATCH /api/users/:id/role`
+
+### 6.2 Sistema de Followers
+
+**Propósito:** Cualquier usuario puede seguir una tarea para recibir notificaciones sin necesidad de estar asignado. Además, cualquier usuario puede añadir a otros como seguidores de una tarea.
+
+**Cambios en backend (`server.js`):**
+- Endpoint `POST /api/bugs/:bugId/followers` — añade/quita/togglea seguidores
+  - Sin `action` especificada: toggle automático para el usuario autenticado
+  - `action: "add"` + `username`: añade a otro usuario como seguidor
+  - `action: "remove"` + `username`: quita a un seguidor
+  - Validación: el username debe existir en users.json (búsqueda case-insensitive)
+- Campo `followers` (array de strings) añadido a cada bug en store.json
+- Los followers reciben notificación de **cualquier cambio** en la tarea que siguen
+
+**Cambios en frontend (`app.js`):**
+- Función `renderFollowersSection(bug)` — inyecta sección de seguidores debajo de `#comments-list`
+- Interfaz completa con: contador, lista de seguidores con botón × para quitar, botón 🔔/🔕 toggle, input + botón "+ Añadir"
+- Función global `removeFollower(username)` para el onclick de los botones ×
+
+### 6.3 Notificaciones — Matriz completa (v5.0)
+
+| Perfil | ¿Qué recibe? | Condición |
+|--------|-------------|-----------|
+| **Admin** | Absolutamente todo | Tiene email configurado |
+| **Manager** | Cualquier cambio en la app | Tiene email configurado |
+| **Seguidor** | Cambios en tareas que sigue | Tiene email configurado |
+| **Asignado** | Cambios en sus tareas | Tiene email configurado |
+| **Subscriptor** | Todo (como admin) | `notifications: true` + email |
+
+### 6.4 Errores encontrados en Fase 6
+
+| # | Error | Síntoma | Causa | Solución |
+|---|-------|---------|-------|----------|
+| 13 | Followers no visibles | La sección no aparecía en el detalle de tarea | `renderFollowersSection` buscaba `.bug-detail-content` (clase inexistente) | Cambiar a `document.getElementById('comments-list')` |
+| 14 | "Usuario no existe" al añadir follower | Error al escribir "Kimi" cuando el username es "kimi" | Comparación case-sensitive en `u.username === targetUser` | Normalizar a lowercase: `u.username.toLowerCase() === targetUser.toLowerCase()` |
+| 15 | Manager no recibía notificaciones | Solo llegaban emails de tareas nuevas/resueltas | La lógica filtraba por `c.type === 'new'` o `c.fields.includes('resuelto por')` | Cambiar a notificación incondicional: `managers.forEach(m => recipients.set(m.email, m))` |
+| 16 | Manager sin email no recibe nada | Youpi (manager) nunca recibía emails | `email: ""` en users.json — el filtro `u.email && u.email.trim()` lo excluye | El usuario debe configurar su email en el perfil |
+
+### 6.5 Lecciones aprendidas (Fase 6)
+
+1. **Selectores DOM**: Verificar que los selectores usados en JS existen realmente en el HTML. No asumir clases que no se han definido.
+2. **Case-sensitivity**: Los usernames deben compararse de forma case-insensitive. Los usuarios escriben con mayúsculas/minúsculas inconsistentes.
+3. **Requisitos ambiguos**: "Cualquier novedad" significa TODOS los cambios, no solo creaciones y resoluciones. Clarificar con el usuario ante duda.
+4. **Email obligatorio**: Un rol sin email configurado es inútil para notificaciones. Considerar forzar email al promover a manager.
+
 ## 📎 Apéndice: Documentación Original del Proyecto Base
 
 _Las siguientes secciones provienen de la documentación original del proyecto y cubren funcionalidades base que no han cambiado._
@@ -1699,4 +1765,4 @@ Este documento es un registro vivo de la evolución del proyecto Bug Tracker. Ca
 
 ---
 
-*Documento mantenido por el equipo de desarrollo de Bug Tracker. Última actualización: 16 de mayo de 2026.*
+*Documento mantenido por el equipo de desarrollo de Bug Tracker. Última actualización: 17 de mayo de 2026.*
