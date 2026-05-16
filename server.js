@@ -115,15 +115,20 @@ function parseBody(req) {
 // ===== EMAIL (Nodemailer + Gmail) =====
 async function sendEmail(to, subject, text, attachmentStr) {
     const transporter = nodemailer.createTransport({
-        service: 'gmail',
+        host: 'smtp-mail.outlook.com',
+        port: 587,
+        secure: false, // true for 465, false for other ports
         auth: {
-            user: process.env.GMAIL_USER,
-            pass: process.env.GMAIL_PASS
+            user: process.env.OUTLOOK_USER,
+            pass: process.env.OUTLOOK_PASS
+        },
+        tls: {
+            ciphers: 'SSLv3'
         }
     });
 
     const info = await transporter.sendMail({
-        from: `"Bug Tracker" <${process.env.GMAIL_USER}>`,
+        from: `"Bug Tracker" <${process.env.OUTLOOK_USER}>`,
         to,
         subject,
         text,
@@ -351,9 +356,9 @@ const server = http.createServer(async (req, res) => {
         };
         const backupStr = JSON.stringify(backup, null, 2);
         try {
-            if (!process.env.GMAIL_USER || !process.env.GMAIL_PASS) {
+            if (!process.env.OUTLOOK_USER || !process.env.OUTLOOK_PASS) {
                 res.writeHead(500, { 'Content-Type': 'application/json' });
-                res.end(JSON.stringify({ error: 'GMAIL_USER o GMAIL_PASS no configuradas en el servidor' }));
+                res.end(JSON.stringify({ error: 'OUTLOOK_USER o OUTLOOK_PASS no configuradas en el servidor' }));
                 return;
             }
             await sendEmail(user.email, 'Backup Bug Tracker', 'Adjunto encontrarás tu backup de Bug Tracker.', backupStr);
