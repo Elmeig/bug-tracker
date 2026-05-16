@@ -1,0 +1,11 @@
+[
+  {
+    "id": "f8c9c77e-6ca6-48d4-b1ad-4f088bb00366",
+    "name": "EMI",
+    "username": "emi",
+    "passwordHash": "7dec7d5d113c324daab48107f209070133307251a9e0fbcaf1493b597416dfd2:8a53214c16958b94663fda2370c658dc49f84eb358d5d47deeecbaab46241023a07f9446f5f79a5d7d0d9582d9ccb887a2d2dbc279de809380359353901c054d",
+    "role": "admin",
+    "email": "",
+    "createdAt": 1778925197368
+  }
+]

@@ -1,19 +1,20 @@
 [
   {
-    "id": "6fb10d52-4cd7-4872-bf64-2d26953e3385",
-    "name": "Admin",
+    "id": "59f2b2de-148b-47bc-8601-8dbeadb4e0e1",
+    "name": "Administrador",
     "username": "admin",
-    "password": "QnVnQWRtaW4xMw==",
+    "passwordHash": "dcef370c6595901b51ff58e3eea7deaa67d597054df47395bfb38ca210fea160:1c202efdd78147813b28c1e254b6f080cfe77391db02ba14d61eb162c9d2f7656a343fb7cd7cc8a20a212283817638ebf372f523007262d6ced440e96af7b6fd",
     "role": "admin",
-    "createdAt": 1778838227939
+    "email": "",
+    "createdAt": 1778926005140
   },
   {
-    "id": "223c628c-1968-4791-84cc-2dff31329220",
+    "id": "2d88e0cf-1bea-46b5-8985-75a39e43566b",
     "name": "Mehdi",
     "username": "mehdi",
-    "password": "TWFkaXRlbG8xMjM=",
+    "passwordHash": "c49109b2fc0825eafae7e0820ea1c434ed3b2b23eb8b642a09a97a9980a1dc63:49fa715bb3ca92e2ff5d297d43448d4f258f408ca1c2351ca76bb40a9c9de75df150331820a46d7d51153f5c3dce3b7b9f85a3b4ed3138e064dbf30e7e920bc4",
     "role": "user",
-    "createdAt": 1778838480335,
-    "email": "Mehdi@remvt.com"
+    "email": "",
+    "createdAt": 1778926076603
   }
 ]

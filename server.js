@@ -9,6 +9,7 @@ const os = require('os');
 const crypto = require('crypto');
 
 const PORT = 3000;
+const RESEND_API_KEY = process.env.RESEND_API_KEY;
 const DATA_DIR = path.join(__dirname, 'data');
 const USERS_FILE = path.join(DATA_DIR, 'users.json');
 const STORE_FILE = path.join(DATA_DIR, 'store.json');
@@ -36,6 +37,7 @@ function hashPassword(password) {
 
 function verifyPassword(password, storedHash) {
     return new Promise((resolve, reject) => {
+        if (!storedHash) return resolve(false);
         const [salt, hash] = storedHash.split(':');
         if (!salt || !hash) return resolve(false);
         crypto.pbkdf2(password, salt, ITERATIONS, KEY_LENGTH, DIGEST, (err, derivedKey) => {
@@ -110,6 +112,37 @@ function parseBody(req) {
 }
 
 // Get local network IP
+// ===== EMAIL (Resend API, no dependencies) =====
+async function sendEmail(to, subject, text, attachmentStr) {
+    const body = {
+        from: 'onboarding@resend.dev',
+        to,
+        subject,
+        text,
+        attachments: [
+            {
+                filename: 'backup.json',
+                content: Buffer.from(attachmentStr).toString('base64')
+            }
+        ]
+    };
+
+    const res = await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: {
+            'Authorization': `Bearer ${RESEND_API_KEY}`,
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(body)
+    });
+
+    if (!res.ok) {
+        const err = await res.text();
+        throw new Error(`Resend API error ${res.status}: ${err}`);
+    }
+    return res.json();
+}
+
 function getLocalIP() {
     const nets = os.networkInterfaces();
     for (const name of Object.keys(nets)) {
@@ -148,6 +181,7 @@ const server = http.createServer(async (req, res) => {
                 return;
             }
             const users = readJSON(USERS_FILE) || [];
+            if (!username) { res.writeHead(400); res.end(JSON.stringify({ error: "Falta username" })); return; }
             const normalizedUsername = username.toLowerCase().trim();
             if (users.find(u => u.username === normalizedUsername)) {
                 res.writeHead(409, { 'Content-Type': 'application/json' });
@@ -191,6 +225,7 @@ const server = http.createServer(async (req, res) => {
                 return;
             }
             const users = readJSON(USERS_FILE) || [];
+            if (!username) { res.writeHead(400); res.end(JSON.stringify({ error: "Falta username" })); return; }
             const normalizedUsername = username.toLowerCase().trim();
             const user = users.find(u => u.username === normalizedUsername);
             if (!user) {
@@ -283,6 +318,46 @@ const server = http.createServer(async (req, res) => {
             res.end(JSON.stringify({ ok: true }));
         } catch (e) {
             res.writeHead(400, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ error: e.message }));
+        }
+        return;
+    }
+
+    // POST /api/send-backup — Send backup to user's email via Resend
+    if (pathname === '/api/send-backup' && req.method === 'POST') {
+        const session = requireAuth(req);
+        if (!session) {
+            res.writeHead(401, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ error: 'No autorizado' }));
+            return;
+        }
+        const users = readJSON(USERS_FILE) || [];
+        const user = users.find(u => u.id === session.userId);
+        if (!user || !user.email) {
+            res.writeHead(400, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ error: 'No tienes un email configurado. Actualiza tu perfil primero.' }));
+            return;
+        }
+        const store = readJSON(STORE_FILE) || { versions: [], activeVersionId: null, activeListId: null };
+        const backup = {
+            _backup: true,
+            _date: new Date().toISOString(),
+            _app: 'Bug Tracker',
+            store,
+            users
+        };
+        const backupStr = JSON.stringify(backup, null, 2);
+        try {
+            if (!RESEND_API_KEY) {
+                res.writeHead(500, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ error: 'RESEND_API_KEY no configurada en el servidor' }));
+                return;
+            }
+            await sendEmail(user.email, 'Backup Bug Tracker', 'Adjunto encontrarás tu backup de Bug Tracker.', backupStr);
+            res.writeHead(200, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ ok: true, message: 'Backup enviado correctamente a ' + user.email }));
+        } catch (e) {
+            res.writeHead(500, { 'Content-Type': 'application/json' });
             res.end(JSON.stringify({ error: e.message }));
         }
         return;

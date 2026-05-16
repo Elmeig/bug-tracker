@@ -1693,6 +1693,26 @@ function initAuthEvents() {
         }
     });
 
+    // Send backup by email
+    $('#btn-send-backup').addEventListener('click', async () => {
+        const token = localStorage.getItem("bugtracker_token");
+        if (!token) { alert('No estás autenticado.'); return; }
+        try {
+            const res = await fetch('/api/send-backup', {
+                method: 'POST',
+                headers: { 'Authorization': 'Bearer ' + token }
+            });
+            const result = await res.json();
+            if (result.ok) {
+                alert('✅ ' + result.message);
+            } else {
+                alert('❌ Error: ' + (result.error || 'No se pudo enviar el backup'));
+            }
+        } catch (e) {
+            alert('Error al enviar backup: ' + e.message);
+        }
+    });
+
     // Restore
     $('#btn-restore').addEventListener('click', () => {
         if (!confirm('⚠️ Restaurar un backup reemplazará TODOS los datos actuales (listas, tareas, usuarios).\n\n¿Estás seguro?')) return;
