@@ -645,6 +645,43 @@ body {
 .comment-form textarea:focus { border-color: var(--accent); }
 .no-comments { font-size: 0.78rem; color: var(--text-muted); text-align: center; padding: 1.5rem 0; }
 
+.comment-header { display: flex; align-items: center; gap: 0.6rem; margin-bottom: 0.25rem; }
+
+/* ===== FOLLOWERS SECTION ===== */
+.followers-section { margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--border); }
+.followers-header { font-weight: 600; margin-bottom: 0.5rem; font-size: 0.85rem; color: var(--text-primary); }
+.followers-list { display: flex; flex-wrap: wrap; gap: 0.25rem; margin-bottom: 0.5rem; }
+.follower-tag { display: inline-flex; align-items: center; gap: 0.3rem; background: var(--bg-secondary); padding: 0.2rem 0.5rem; border-radius: 12px; font-size: 0.75rem; color: var(--text-primary); }
+.follower-remove { background: none; border: none; cursor: pointer; color: var(--text-muted); font-size: 0.85rem; padding: 0 2px; line-height: 1; }
+.follower-remove:hover { color: #dc2626; }
+.no-followers { font-size: 0.75rem; color: var(--text-muted); font-style: italic; }
+.btn-follow { background: var(--accent); color: white; border: none; border-radius: 4px; padding: 0.3rem 0.7rem; cursor: pointer; font-size: 0.78rem; }
+.btn-follow:hover { opacity: 0.9; }
+.btn-unfollow { background: var(--bg-secondary); color: var(--text-secondary); border: 1px solid var(--border); border-radius: 4px; padding: 0.3rem 0.7rem; cursor: pointer; font-size: 0.78rem; }
+.btn-unfollow:hover { background: rgba(220,38,38,0.1); color: #dc2626; }
+.add-follower-row { display: flex; gap: 0.4rem; margin-top: 0.5rem; }
+.add-follower-row input { flex: 1; padding: 0.3rem 0.5rem; border: 1px solid var(--border); border-radius: 4px; background: var(--bg); color: var(--text-primary); font-size: 0.78rem; min-width: 0; }
+.add-follower-row input:focus { border-color: var(--accent); outline: none; }
+.btn-add-follower { background: var(--accent); color: white; border: none; border-radius: 4px; padding: 0.3rem 0.7rem; cursor: pointer; font-size: 0.78rem; white-space: nowrap; }
+.btn-add-follower:hover { opacity: 0.9; }
+.followers-actions { display: flex; flex-direction: column; gap: 0.5rem; }
+
+/* Manager badge */
+.user-role-badge.manager { background: #f59e0b; color: #1a1a2e; font-size: 0.6rem; padding: 0.1rem 0.45rem; border-radius: 10px; font-weight: 700; margin-left: 0.3rem; }
+.btn-promote { background: #f59e0b; color: #1a1a2e; border: none; border-radius: 4px; padding: 0.25rem 0.5rem; cursor: pointer; font-size: 0.75rem; }
+.btn-promote:hover { opacity: 0.85; }
+.btn-demote { background: var(--bg-secondary); color: var(--text-secondary); border: 1px solid var(--border); border-radius: 4px; padding: 0.25rem 0.5rem; cursor: pointer; font-size: 0.75rem; }
+.btn-demote:hover { opacity: 0.85; }
+.comment-edit-btn { background: none; border: none; cursor: pointer; font-size: 0.7rem; padding: 2px 4px; opacity: 0.5; border-radius: 4px; }
+.comment-edit-btn:hover { opacity: 1; background: var(--hover-bg, rgba(255,255,255,0.05)); }
+.comment-edit-textarea { width: 100%; min-height: 60px; padding: 0.5rem; font-size: 0.82rem; border: 1px solid var(--border); border-radius: 6px; background: var(--bg); color: var(--text-primary); resize: vertical; margin-bottom: 0.4rem; }
+.comment-edit-actions { display: flex; gap: 0.4rem; justify-content: flex-end; }
+.comment-edit-actions .btn-sm { font-size: 0.72rem; padding: 0.25rem 0.6rem; border-radius: 4px; border: none; cursor: pointer; }
+.btn-save { background: var(--accent, #6366f1); color: white; }
+.btn-save:hover { opacity: 0.9; }
+.btn-cancel-edit { background: var(--bg-secondary, #444); color: var(--text-secondary); }
+.btn-cancel-edit:hover { opacity: 0.8; }
+
 /* ===== AUTH SCREEN ===== */
 .auth-screen {
     position: fixed; inset: 0; z-index: 2000;

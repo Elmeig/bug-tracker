@@ -193,6 +193,7 @@ const Auth = {
     get user() { return this._currentUser; },
     get isLoggedIn() { return !!this._currentUser; },
     get isAdmin() { return this._currentUser?.role === 'admin'; },
+    get isManager() { return this._currentUser?.role === 'manager'; },
 
     getUsers() {
         // Never expose password hashes or raw passwords to the UI
@@ -921,6 +922,7 @@ function openBugDetailWithContext(bugId, versionId, listId) {
     `;
     $('#detail-description').textContent = bug.description || 'Sin descripción';
     renderComments(bug);
+    renderFollowersSection(bug);
     openModal('modal-detail');
 }
 
@@ -930,17 +932,81 @@ function openBugDetail(bugId) {
 
 function renderComments(bug) {
     const container = $('#comments-list');
-    if (bug.comments.length === 0) {
+    if (!bug.comments || bug.comments.length === 0) {
         container.innerHTML = '<div class="no-comments">Sin comentarios aún</div>';
-    } else {
-        container.innerHTML = bug.comments.map(c => `
-            <div class="comment-item">
-                <div class="comment-date"><span class="comment-author">${escapeHtml(c.author || 'Anónimo')}</span>${formatDate(c.createdAt)}</div>
-                <div class="comment-text">${escapeHtml(c.text)}</div>
-            </div>
-        `).join('');
-        container.scrollTop = container.scrollHeight;
+        return;
     }
+    const isAdmin = Auth.isAdmin;
+    const currentUser = Auth.user?.username || '';
+    container.innerHTML = bug.comments.map(c => {
+        const canEdit = isAdmin || c.authorUser === currentUser;
+        const editedInfo = c.editedAt
+            ? ' (editado por ' + (c.editedBy || 'alguien') + ' ' + formatDate(c.editedAt) + ')'
+            : '';
+        return '<div class="comment-item" data-comment-id="' + c.id + '">' +
+            '<div class="comment-header">' +
+                '<span class="comment-author">' + escapeHtml(c.author || 'Anónimo') + '</span>' +
+                '<span class="comment-date">' + formatDate(c.createdAt) + editedInfo + '</span>' +
+                (canEdit ? '<button class="comment-edit-btn" onclick="startEditComment(\'' + c.id + '\')" title="Editar">✏️</button>' : '') +
+            '</div>' +
+            '<div class="comment-text" id="comment-body-' + c.id + '">' + escapeHtml(c.text) + '</div>' +
+        '</div>';
+    }).join('');
+    container.scrollTop = container.scrollHeight;
+}
+
+// ===== INLINE COMMENT EDITING =====
+function startEditComment(commentId) {
+    const body = document.getElementById('comment-body-' + commentId);
+    if (!body || body.querySelector('textarea')) return;
+    const oldText = body.textContent;
+    body.setAttribute('data-original-text', oldText);
+    body.innerHTML = '<textarea id="edit-textarea-' + commentId + '" class="comment-edit-textarea">' + escapeHtml(oldText) + '</textarea>' +
+        '<div class="comment-edit-actions">' +
+            '<button class="btn-sm btn-save" onclick="saveEditComment(\'' + commentId + '\')">💾 Guardar</button>' +
+            '<button class="btn-sm btn-cancel-edit" onclick="cancelEditComment(\'' + commentId + '\')">✕ Cancelar</button>' +
+        '</div>';
+    const ta = document.getElementById('edit-textarea-' + commentId);
+    if (ta) { ta.focus(); ta.selectionStart = ta.value.length; }
+}
+
+async function saveEditComment(commentId) {
+    const ta = document.getElementById('edit-textarea-' + commentId);
+    if (!ta) return;
+    const newText = ta.value.trim();
+    if (!newText) { alert('El comentario no puede estar vacío.'); return; }
+    const token = localStorage.getItem('bugtracker_token');
+    if (!token) { alert('No estás autenticado.'); return; }
+    try {
+        const res = await fetch('/api/comments', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+            body: JSON.stringify({ bugId: currentDetailBugId, commentId, text: newText })
+        });
+        const result = await res.json();
+        if (result.ok) {
+            await Sync.pull('store', 'bugtracker_data');
+            Store.load();
+            const refreshed = Store.getBug(
+                currentDetailVersionId || Store.data.activeVersionId,
+                currentDetailListId || Store.data.activeListId,
+                currentDetailBugId
+            );
+            if (refreshed) renderComments(refreshed);
+        } else {
+            alert('❌ Error: ' + (result.error || 'No se pudo guardar'));
+        }
+    } catch (e) {
+        alert('Error al guardar: ' + e.message);
+    }
+}
+
+function cancelEditComment(commentId) {
+    const body = document.getElementById('comment-body-' + commentId);
+    if (!body) return;
+    const originalText = body.getAttribute('data-original-text') || '';
+    body.innerHTML = escapeHtml(originalText);
+    body.removeAttribute('data-original-text');
 }
 
 // ===== BUG MODAL =====
@@ -1538,6 +1604,109 @@ function updateAuthUI() {
     }
 }
 
+// ===== FOLLOWERS SECTION =====
+function renderFollowersSection(bug) {
+    const commentsList = document.getElementById('comments-list');
+    if (!commentsList) return;
+    
+    // Remove old followers section if exists
+    const oldSec = document.querySelector('.followers-section');
+    if (oldSec) oldSec.remove();
+    
+    const followers = bug.followers || [];
+    const currentUser = Auth.user?.username || '';
+    const isFollowing = followers.includes(currentUser);
+    
+    const section = document.createElement('div');
+    section.className = 'followers-section';
+    section.innerHTML = `
+        <div class="followers-header">
+            <span>👥 Seguidores (${followers.length})</span>
+        </div>
+        <div class="followers-list">
+            ${followers.map(f => `<span class="follower-tag">${escapeHtml(f)} <button class="follower-remove" onclick="removeFollower('${escapeHtml(f)}')">×</button></span>`).join('')}
+            ${followers.length === 0 ? '<span class="no-followers">Nadie sigue esta tarea aún</span>' : ''}
+        </div>
+        <div class="followers-actions">
+            <button class="btn-sm ${isFollowing ? 'btn-unfollow' : 'btn-follow'}" id="btn-toggle-follow">
+                ${isFollowing ? '🔕 Dejar de seguir' : '🔔 Seguir'}
+            </button>
+            <div class="add-follower-row">
+                <input type="text" id="add-follower-input" placeholder="Username para añadir...">
+                <button class="btn-sm btn-add-follower" id="btn-add-follower">+ Añadir</button>
+            </div>
+        </div>
+    `;
+    
+    // Insert after comments section
+    if (commentsList.parentNode) {
+        commentsList.parentNode.insertBefore(section, commentsList.nextSibling);
+    }
+    
+    // Toggle follow button
+    const toggleBtn = section.querySelector('#btn-toggle-follow');
+    if (toggleBtn) {
+        toggleBtn.addEventListener('click', async () => {
+            const token = localStorage.getItem('bugtracker_token');
+            const res = await fetch('/api/bugs/' + currentDetailBugId + '/followers', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+                body: JSON.stringify({})
+            });
+            const result = await res.json();
+            if (result.ok) {
+                // Update bug object and re-render
+                bug.followers = result.followers;
+                renderFollowersSection(bug);
+            }
+        });
+    }
+    
+    // Add follower button
+    const addBtn = section.querySelector('#btn-add-follower');
+    const addInput = section.querySelector('#add-follower-input');
+    if (addBtn && addInput) {
+        addBtn.addEventListener('click', async () => {
+            const username = addInput.value.trim();
+            if (!username) return;
+            const token = localStorage.getItem('bugtracker_token');
+            const res = await fetch('/api/bugs/' + currentDetailBugId + '/followers', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+                body: JSON.stringify({ action: 'add', username })
+            });
+            const result = await res.json();
+            if (result.ok) {
+                bug.followers = result.followers;
+                renderFollowersSection(bug);
+            } else {
+                alert('❌ ' + (result.error || 'No se pudo añadir'));
+            }
+        });
+    }
+}
+
+// Remove follower (global function — called from onclick)
+async function removeFollower(username) {
+    const token = localStorage.getItem('bugtracker_token');
+    const res = await fetch('/api/bugs/' + currentDetailBugId + '/followers', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+        body: JSON.stringify({ action: 'remove', username })
+    });
+    const result = await res.json();
+    if (result.ok) {
+        const vId = currentDetailVersionId || Store.data.activeVersionId;
+        const lId = currentDetailListId || Store.data.activeListId;
+        const bug = Store.getBug(vId, lId, currentDetailBugId);
+        if (bug) {
+            bug.followers = result.followers;
+            renderFollowersSection(bug);
+        }
+    }
+}
+
+
 // Admin panel: render user list
 function renderAdminPanel() {
     const container = document.getElementById('admin-user-list');
@@ -1547,12 +1716,12 @@ function renderAdminPanel() {
         <div class="admin-user-row" data-user-id="${u.id}">
             <div class="admin-user-avatar">${u.name.charAt(0).toUpperCase()}</div>
             <div class="admin-user-info">
-                <div class="admin-user-name">${escapeHtml(u.name)} ${u.role === 'admin' ? '<span class="user-role-badge">ADMIN</span>' : ''}</div>
+                <div class="admin-user-name">${escapeHtml(u.name)} ${u.role === 'admin' ? '<span class="user-role-badge">ADMIN</span>' : ''}${u.role === 'manager' ? '<span class="user-role-badge manager">MANAGER</span>' : ''}</div>
                 <div class="admin-user-meta">@${escapeHtml(u.username)} · ${formatShortDate(u.createdAt)}</div>
             </div>
             <div class="admin-user-actions" data-mode="view">
                 <button class="btn-sm btn-save" data-action="edit-user" data-uid="${u.id}" title="Editar">✏️ Editar</button>
-                ${u.role !== 'admin' ? `<button class="btn-sm btn-del" data-action="delete-user" data-uid="${u.id}" title="Eliminar">🗑️</button>` : ''}
+                ${u.role !== 'admin' ? `<button class="btn-sm ${u.role === 'manager' ? 'btn-demote' : 'btn-promote'}" data-action="toggle-role" data-uid="${u.id}" data-role="${u.role}" title="${u.role === 'manager' ? 'Quitar Manager' : 'Hacer Manager'}">${u.role === 'manager' ? '👤' : '⭐'}</button><button class="btn-sm btn-del" data-action="delete-user" data-uid="${u.id}" title="Eliminar">🗑️</button>` : ''}
             </div>
         </div>
     `).join('');
@@ -1582,6 +1751,32 @@ function renderAdminPanel() {
                 render();
             });
             actionsDiv.querySelector('[data-action="cancel-edit"]').addEventListener('click', () => renderAdminPanel());
+        });
+    });
+
+    // Toggle role (Manager promotion/demotion)
+    container.querySelectorAll('[data-action="toggle-role"]').forEach(btn => {
+        btn.addEventListener('click', async () => {
+            const uid = btn.dataset.uid;
+            const currentRole = btn.dataset.role;
+            const newRole = currentRole === 'manager' ? 'user' : 'manager';
+            const token = localStorage.getItem('bugtracker_token');
+            try {
+                const res = await fetch('/api/users/' + uid + '/role', {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+                    body: JSON.stringify({ role: newRole })
+                });
+                const result = await res.json();
+                if (result.ok) {
+                    renderAdminPanel();
+                    render();
+                } else {
+                    alert('❌ Error: ' + (result.error || 'No se pudo cambiar el rol'));
+                }
+            } catch (e) {
+                alert('Error: ' + e.message);
+            }
         });
     });
 

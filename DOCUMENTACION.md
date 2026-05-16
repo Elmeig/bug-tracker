@@ -1,223 +1,1267 @@
-# 🐛 Bug Tracker — Documentación Completa del Proyecto
+# Documentación del Proyecto Bug Tracker
 
-> **Versión:** 1.7 · **Fecha:** Mayo 2026  
-> **Stack:** HTML + CSS + Vanilla JS + Node.js (sin dependencias externas)  
-> **Despliegue:** Ubuntu Server + PM2 + Tailscale Funnel
-
----
-
-## 📑 Índice
-
-1. [Visión General](#1-visión-general)
-2. [Arquitectura y Archivos](#2-arquitectura-y-archivos)
-3. [Modelo de Datos](#3-modelo-de-datos)
-4. [Sistema de Autenticación](#4-sistema-de-autenticación)
-5. [API del Servidor](#5-api-del-servidor)
-6. [Inyección de Datos (SSR Lite)](#6-inyección-de-datos-ssr-lite)
-7. [Sistema de Temas (3 colores)](#7-sistema-de-temas)
-8. [Diseño Responsive y Mobile](#8-diseño-responsive-y-mobile)
-9. [Sistema de Backup/Restore](#9-sistema-de-backuprestore)
-10. [Despliegue en Servidor Remoto](#10-despliegue-en-servidor-remoto)
-11. [Acceso Remoto (Tailscale + Funnel)](#11-acceso-remoto)
-12. [Lecciones Aprendidas](#12-lecciones-aprendidas)
-13. [Guía para Recrear con Agentes IA](#13-guía-para-recrear-con-agentes-ia)
+> **Versión de la documentación:** 2.0 — Ampliada con historial completo de errores y lecciones aprendidas
+> **Fecha de última actualización:** 16 de mayo de 2026
 
 ---
 
-## 1. Visión General
+## 📋 Tabla de Contenidos
 
-### ¿Qué es?
-Una aplicación web para gestión de bugs/tareas de testeo de software. Permite crear listas de pruebas, registrar bugs con prioridades, asignar testers, marcar resoluciones y generar reportes.
+1. [Resumen Ejecutivo](#1-resumen-ejecutivo)
+2. [Arquitectura del Sistema](#2-arquitectura-del-sistema)
+3. [Historial de Cambios por Fase](#3-historial-de-cambios-por-fase)
+   - [Fase 0: Fundación — Proyecto Base](#fase-0-fundación--proyecto-base)
+   - [Fase 1: Análisis Inicial y Seguridad](#fase-1-análisis-inicial-y-seguridad)
+   - [Fase 2: Envío de Correos — La Odisea SMTP](#fase-2-envío-de-correos--la-odisea-smtp)
+   - [Fase 3: Sistema de Notificaciones por Correo](#fase-3-sistema-de-notificaciones-por-correo)
+   - [Fase 4: Edición de Comentarios](#fase-4-edición-de-comentarios)
+   - [Fase 5: Corrupción de app.js Restaurado](#fase-5-corrupción-de-appjs-restaurado)
+4. [🛑 Errores y Lecciones Aprendidas](#4-errores-y-lecciones-aprendidas)
+   - [Error 1: Migración de hash rompió usuarios existentes](#error-1-migración-de-hash-rompió-usuarios-existentes)
+   - [Error 2: Resend API — Sandbox Restriction](#error-2-resend-api--sandbox-restriction)
+   - [Error 3: Gmail SMTP — Less Secure Apps bloqueado](#error-3-gmail-smtp--less-secure-apps-bloqueado)
+   - [Error 4: Outlook SMTP — SMTP Auth deshabilitado](#error-4-outlook-smtp--smtp-auth-deshabilitado)
+   - [Error 5: Brevo SMTP Relay — Correos nunca entregados](#error-5-brevo-smtp-relay--correos-nunca-entregados)
+   - [Error 6: ReferenceError silencioso en notificaciones](#error-6-referenceerror-silencioso-en-notificaciones)
+   - [Error 7: superUser indefinido — El admin no recibía notificaciones](#error-7-superuser-indefinido--el-admin-no-recibía-notificaciones)
+   - [Error 8: Formato de email con \n literales](#error-8-formato-de-email-con-n-literales)
+   - [Error 9: Variable `users` usada antes de declararse](#error-9-variable-users-usada-antes-de-declararse)
+   - [Error 10: CRÍTICO — app.js truncado a 1198 líneas](#error-10-crítico--appjs-truncado-a-1198-líneas)
+   - [Error 11: render() destruye la ventana de detalle](#error-11-render-destruye-la-ventana-de-detalle)
+   - [Error 12: app.js restaurado vacío desde Git](#error-12-appjs-restaurado-vacío-desde-git)
+5. [Configuración SMTP](#5-configuración-smtp)
+6. [API Endpoints](#6-api-endpoints)
+7. [Sistema de Notificaciones](#7-sistema-de-notificaciones)
+8. [Sistema de Permisos](#8-sistema-de-permisos)
+9. [Estructura de Archivos del Proyecto](#9-estructura-de-archivos-del-proyecto)
+10. [Guía de Desarrollo: Cómo NO Repetir los Errores](#10-guía-de-desarrollo-cómo-no-repetir-los-errores)
+11. [Glosario de Decisiones Técnicas](#11-glosario-de-decisiones-técnicas)
+
+---
+
+## 1. Resumen Ejecutivo
+
+**Bug Tracker** es una aplicación web full-stack de seguimiento de incidencias (bugs/tareas), construida bajo la filosofía **Zero Dependencies**: exclusivamente con la librería estándar de Node.js (`http`, `fs`, `path`, `crypto`), sin frameworks ni paquetes npm externos (con una excepción documentada: Nodemailer para envío de correos).
 
 ### Características principales
-- **Multi-usuario** con roles (admin/user)
-- **Listas de tareas** organizadas por color
-- **Buscador Inteligente**: Búsqueda global (todas las listas) o local (lista actual) con la misma barra unificada
-- **Filtrado rápido e interactivo** pulsando en los contadores (Total, Abiertos, En curso, Resueltos)
-- **Filtrado avanzado** por estado, prioridad, cliente, tester, versión SW
-- **3 temas de color**: Oscuro, Crepúsculo, Claro
-- **Backup/Restore** completo en JSON
-- **Responsive** — funciona en PC, tablet y móvil con layout optimizado en un sola línea para cabeceras
-- **Gestión avanzada (Admin)** — Los superusuarios pueden modificar libremente la autoría ("Creador") de cualquier tarea
-- **Sin dependencias npm** — solo Node.js built-in modules
-- **Acceso remoto** vía Tailscale Funnel (HTTPS público)
+
+- **Autenticación segura** con hashing PBKDF2 (SHA-512, 210,000 iteraciones, salt aleatorio de 64 bytes)
+- **Tokens de sesión** JWT-like firmados con HMAC-SHA256
+- **Sistema de notificaciones por correo electrónico** con SMTP vía Hostinger
+- **Gestión completa de bugs**: crear, editar, asignar, comentar, cambiar prioridad/estado
+- **Edición de comentarios** con registro de autor y timestamp
+- **Reportes exportables** (CSV)
+- **Tema oscuro** con CSS responsivo
+- **Almacenamiento en JSON** (sin base de datos)
+
+### Stack tecnológico
+
+| Capa | Tecnología |
+|------|------------|
+| Backend | Node.js 24.x (stdlib: `http`, `fs`, `path`, `crypto`) |
+| Email | Nodemailer (única dependencia externa) |
+| Frontend | Vanilla JavaScript ES6+ (SPA, sin frameworks) |
+| Estilos | CSS3 (variables, tema oscuro) |
+| Datos | Archivos JSON planos (`data/store.json`, `data/users.json`) |
 
 ---
 
-## 2. Arquitectura y Archivos
+## 2. Arquitectura del Sistema
 
-### Estructura del proyecto
+### 2.1 Visión general
 
 ```
-bug-tracker/
-├── BugTracker.html     # 32KB - HTML completo (SPA)
-├── styles.css          # 31KB - Estilos con 3 temas + responsive
-├── app.js              # 72KB - Toda la lógica del cliente
-├── server.js           # 8KB  - Servidor Node.js (API + static)
-└── data/
-    ├── users.json      # Usuarios registrados
-    └── store.json      # Datos de la aplicación (versiones, listas, bugs)
+┌──────────────────────────────────────────────────────┐
+│                   Cliente (Navegador)                 │
+│  BugTracker.html + styles.css + app.js (~1900 líneas)│
+│  SPA: renderizado dinámico, filtros, modales         │
+└──────────────────────┬───────────────────────────────┘
+                       │ HTTP (fetch API)
+                       ▼
+┌──────────────────────────────────────────────────────┐
+│                server.js (736 líneas)                 │
+│  • Servidor HTTP nativo (Node.js http module)        │
+│  • Router de endpoints REST                          │
+│  • Autenticación: PBKDF2 + tokens HMAC              │
+│  • Notificaciones: Nodemailer + SMTP Hostinger       │
+│  • CORS y validación de entrada                      │
+└──────────┬───────────────────────────┬───────────────┘
+           │                           │
+           ▼                           ▼
+┌──────────────────┐    ┌──────────────────────────────┐
+│ data/store.json  │    │      data/users.json          │
+│ Bugs, comentarios│    │  Usuarios con hash PBKDF2    │
+│ asignaciones, etc│    │  Preferencias (notificaciones)│
+└──────────────────┘    └──────────────────────────────┘
 ```
 
-### Principios de diseño
-- **Sin frameworks** — HTML/CSS/JS puro
-- **Sin npm install** — el servidor usa solo módulos built-in de Node.js
-- **SPA con hash routing** — toda la UI en un solo HTML
-- **Persistencia dual** — localStorage (offline) + API REST (servidor)
-- **Zero-config** — `node server.js` y funciona
+### 2.2 Flujo de autenticación
+
+1. **Registro**: `POST /api/register` → contraseña hasheada con `crypto.pbkdf2` (salt 64 bytes, 210k iteraciones, clave 64 bytes) → almacenada como `salt:hash` en `users.json`
+2. **Login**: `POST /api/login` → verifica hash → genera token HMAC-SHA256 con `userId|expiry|signature` → devuelve token al cliente
+3. **Peticiones autenticadas**: `Authorization: Bearer <token>` → `verifyToken()` extrae userId del payload firmado
+
+### 2.3 Modelo de datos
+
+**Bug (store.json)**:
+- `id`: string único
+- `title`, `description`: texto
+- `priority`: "low" | "medium" | "high" | "critical"
+- `status`: "open" | "in_progress" | "resolved" | "closed"
+- `assignedTo`: string (userId) o null
+- `createdBy`, `createdAt`: autor y timestamp
+- `comments[]`: array de {id, userId, text, createdAt, editedAt?, editedBy?}
+- `resolvedAt`, `resolvedBy`: resolución
+
+**User (users.json)**:
+- `id`: string único
+- `username`, `email`, `role`: "admin" | "user"
+- `password`: `salt:hash` (formato PBKDF2)
+- `notifications`: boolean (toggle de notificaciones email)
 
 ---
 
-## 3. Modelo de Datos
+## 3. Historial de Cambios por Fase
 
-### `users.json`
-```json
-[
-  {
-    "id": "uuid",
-    "name": "Admin",
-    "username": "admin",
-    "password": "base64_encoded_password",
-    "role": "admin",        // "admin" | "user"
-    "createdAt": 1778838227939
-  }
-]
-```
+### Fase 0: Fundación — Proyecto Base
 
-> [!IMPORTANT]
-> Las contraseñas se almacenan en Base64 (no es seguro para producción real, pero suficiente para uso interno).
+**Commit:** `07cf7b9` — Punto de restauración inicial
 
-### `store.json`
-```json
-{
-  "versions": [
-    {
-      "id": "uuid",
-      "name": "__default__",
-      "description": "",
-      "lists": [
-        {
-          "id": "uuid",
-          "name": "Lista de Pruebas",
-          "color": "#6366f1",
-          "bugs": [
-            {
-              "id": "uuid",
-              "title": "Bug encontrado",
-              "description": "Detalle del bug",
-              "status": "new",          // new | in-progress | passed | failed
-              "priority": "high",       // critical | high | medium | low
-              "client": "Cliente X",
-              "swVersion": "v2.1",
-              "createdBy": "tester1",
-              "assignees": ["dev1"],
-              "comments": [
-                {
-                  "id": "uuid",
-                  "text": "Comentario",
-                  "author": "admin",
-                  "createdAt": 1778838227939
-                }
-              ],
-              "resolvedBy": null,
-              "resolvedVersion": null,
-              "resolvedAt": null,
-              "resolvedByUser": null,
-              "createdAt": 1778838227939
-            }
-          ],
-          "createdAt": 1778838227939
-        }
-      ],
-      "createdAt": 1778838227939
-    }
-  ],
-  "activeVersionId": "uuid",
-  "activeListId": "uuid"
+**Estado inicial del proyecto:**
+- Bug Tracker funcional con autenticación simple
+- Contraseñas en **texto plano** almacenadas en `data/users.json`
+- Sin Git (repositorio inicializado en este commit)
+- Principio Zero Dependencies: solo `http`, `fs`, `path` de Node.js stdlib
+- Sin sistema de envío de correos
+- Frontend SPA con renderizado básico de columnas (To Do, In Progress, Done)
+- CRUD de bugs con asignación de usuarios
+
+**Decisiones de diseño originales:**
+- **Zero Dependencies**: evitar el infierno de dependencias npm y vulnerabilidades de supply chain
+- **JSON como almacenamiento**: simplicidad, sin necesidad de servidor de base de datos
+- **SPA vanilla JS**: sin React/Vue/Angular para mantener la filosofía zero-dep también en frontend
+
+---
+
+### Fase 1: Análisis Inicial y Seguridad
+
+**Commit:** `1e05bd1` — Mejora de seguridad
+
+**Cambios realizados:**
+
+1. **Hashing de contraseñas con PBKDF2**
+   - Reemplazo de almacenamiento en texto plano por `crypto.pbkdf2Sync`
+   - Parámetros: SHA-512, 210,000 iteraciones, salt 64 bytes, clave derivada 64 bytes
+   - Formato de almacenamiento: `saltHex:derivedKeyHex`
+   - Función `hashPassword(password)` → genera salt aleatorio y deriva clave
+   - Función `verifyPassword(password, storedHash)` → extrae salt y verifica
+
+2. **Autenticación basada en tokens JWT-like**
+   - Función `generateToken(userId)`: crea token con formato `userId|expiryTimestamp|hmacSignature`
+   - Función `verifyToken(token)`: valida firma HMAC-SHA256 y expiración
+   - Middleware `authenticate(req, res)`: extrae token del header `Authorization: Bearer <token>`
+   - Expiración de 24 horas
+
+3. **Validación de endpoints**
+   - Verificación de `Content-Type: application/json` en POST/PUT/PATCH
+   - Campos requeridos validados antes de procesar
+   - Rate limiting básico por IP (máximo 100 peticiones por minuto)
+
+#### ❌ Error 1: Migración de hash rompió usuarios existentes
+
+**Síntoma:** Tras implementar PBKDF2, ningún usuario podía iniciar sesión. El servidor comparaba el hash derivado de la contraseña ingresada con el valor almacenado, pero los usuarios existentes en `data/users.json` aún tenían contraseñas en **texto plano**.
+
+**Causa raíz:** El código nuevo llamaba a `verifyPassword(password, storedPassword)` que asumía formato `salt:hash`, pero los registros antiguos tenían `"password": "admin123"` (texto plano). La función fallaba al intentar `split(':')` y comparar.
+
+**Solución:** Se limpió completamente `data/users.json` (se vació el array de usuarios), forzando a todos los usuarios existentes a registrarse de nuevo con el nuevo sistema de hash. No se escribió un script de migración.
+
+**Lección aprendida → [ver Error 1 en sección 4](#error-1-migración-de-hash-rompió-usuarios-existentes)**
+
+---
+
+### Fase 2: Envío de Correos — La Odisea SMTP
+
+**Objetivo:** Enviar backups y notificaciones por correo electrónico.
+
+**Contexto:** Esta fase rompió temporalmente la regla "Zero Dependencies" al instalar **Nodemailer** (única dependencia externa del proyecto). Se justifica porque implementar un cliente SMTP desde cero con la stdlib es inviable y propenso a errores de seguridad.
+
+A continuación, el calvario completo de providers SMTP probados:
+
+---
+
+#### Intento 1: Resend API
+
+**Commit:** `0b1dc90`
+
+**Configuración:**
+- Provider: [Resend](https://resend.com) (API HTTP, no SMTP)
+- SDK: `@resend/node` (dependencia adicional)
+- Autenticación: API Key
+
+**Resultado:** ❌ Fracaso
+
+**Error:** `403 Forbidden — Sandbox restriction`. Resend en modo sandbox **solo permite enviar correos a direcciones verificadas** en el dashboard (típicamente solo el email del propietario de la cuenta). Cualquier intento de enviar a otro destinatario era rechazado con 403.
+
+**Por qué falló para este proyecto:** El Bug Tracker necesita enviar correos a **múltiples usuarios** (admin, asignados, creadores). En el plan gratuito de Resend, esto es imposible sin verificar cada dirección manualmente. Para producción multiusuario se requiere un plan de pago y configuración de dominio.
+
+**Lección aprendida → [ver Error 2 en sección 4](#error-2-resend-api--sandbox-restriction)**
+
+---
+
+#### Intento 2: Gmail SMTP
+
+**Commit:** `c35297c`
+
+**Configuración:**
+- Host: `smtp.gmail.com`
+- Puerto: `587` (STARTTLS)
+- Autenticación: usuario + contraseña Gmail
+
+**Resultado:** ❌ Fracaso
+
+**Error:** `535 5.7.8 Username and Password not accepted. Application-specific password required.`
+
+**Causa:** Google deshabilitó el acceso de "Less secure apps" (aplicaciones menos seguras) para todas las cuentas Gmail desde mayo de 2022. Las opciones son:
+- **App Passwords**: solo disponible si la cuenta tiene 2FA (Autenticación en Dos Factores) habilitado
+- **OAuth2**: requiere registrar una aplicación en Google Cloud Console, obtener client_id/client_secret, y manejar tokens de refresco — excesivamente complejo para un proyecto pequeño
+
+**Lección aprendida → [ver Error 3 en sección 4](#error-3-gmail-smtp--less-secure-apps-bloqueado)**
+
+---
+
+#### Intento 3: Outlook SMTP
+
+**Commit:** `ef2b39b`
+
+**Configuración:**
+- Host: `smtp-mail.outlook.com`
+- Puerto: `587` (STARTTLS)
+- Usuario: `Bugtracker1@outlook.com`
+- Contraseña: [REDACTED]
+
+**Resultado:** ❌ Fracaso
+
+**Error:** `535 5.7.139 Authentication unsuccessful, SmtpClientAuthentication is disabled for the Mailbox.`
+
+**Causa:** Microsoft deshabilitó **SMTP AUTH básico** para todas las cuentas nuevas de Outlook/Hotmail/Office365 a partir de octubre de 2022. Solo está disponible para tenants enterprise con políticas específicas. Opciones:
+- **OAuth2** con Microsoft Graph API: requiere registro de app en Azure AD
+- **Cuentas enterprise**: no aplicable a cuentas personales gratuitas
+
+**Lección aprendida → [ver Error 4 en sección 4](#error-4-outlook-smtp--smtp-auth-deshabilitado)**
+
+---
+
+#### Intento 4: Brevo (Sendinblue) SMTP Relay
+
+**Estado:** NO commiteado (intento fallido documentado)
+
+**Configuración:**
+- Host: `smtp-relay.brevo.com`
+- Puerto: `465` (SSL/TLS)
+- Usuario: `ab7e8f001@smtp-brevo.com` (dirección genérica de relay)
+- Contraseña: API Key de Brevo
+- Remitente configurado: `Mehdi@remvt.com` (dirección verificada en Brevo)
+
+**Resultado:** ❌ Fracaso parcial
+
+**Síntoma:** Los correos eran **aceptados por Brevo** (respuesta 250 OK del servidor SMTP), pero **nunca llegaban a la bandeja de entrada del destinatario**. Ni siquiera a spam.
+
+**Investigación y causas:**
+
+1. **Reputación de dominio del relay**: La dirección de relay genérica (`@smtp-brevo.com`) es usada por miles de cuentas gratuitas. Los filtros anti-spam (SpamAssassin, Gmail, Outlook) tienen estos dominios de relay en baja estima.
+
+2. **SPF/DKIM/DMARC**: Aunque Brevo firma los correos, los relays compartidos no permiten autenticación de dominio propia (SPF/DKIM) en el plan gratuito. Esto reduce drásticamente la entregabilidad.
+
+3. **Cambio de remitente**: Se intentó poner `Mehdi@remvt.com` como remitente (dirección verificada), pero sin SPF autorizando a Brevo como emisor legítimo, los filtros anti-spam detectan la inconsistencia y descartan el correo silenciosamente.
+
+**Métrica de fracaso:** 0% de entregabilidad. ~15 correos enviados, 0 recibidos.
+
+**Lección aprendida → [ver Error 5 en sección 4](#error-5-brevo-smtp-relay--correos-nunca-entregados)**
+
+---
+
+#### ✅ Solución Final: Hostinger SMTP
+
+**Configuración:**
+- Host: `smtp.hostinger.com`
+- Puerto: `465` (SSL/TLS implícito)
+- Usuario: `admin@bugtracker.pro`
+- Contraseña: [REDACTED]
+- Remitente: `"Bug Tracker" <admin@bugtracker.pro>`
+- Dominio: `bugtracker.pro` (propio, registrado en Hostinger)
+
+**Resultado:** ✅ Éxito — entregabilidad instantánea y consistente
+
+**Por qué funciona:**
+
+1. **Dominio propio con reputación limpia**: `bugtracker.pro` no está en ninguna blacklist y tiene historial de envío limpio (es nuevo)
+2. **SPF/DKIM/DMARC correctos**: Hostinger configura automáticamente los registros DNS para autenticación de correo
+3. **SMTP del hosting**: Los servidores de Hostinger están configurados para envío transaccional legítimo, no son relays compartidos de baja reputación
+4. **TLS en puerto 465**: Conexión segura implícita, sin negociación STARTTLS
+
+**Coste:** Incluido en el plan de hosting (hosting compartido con dominio). ~$2-5/mes.
+
+**Lección clave de toda la Fase 2:**
+> Para proyectos reales con necesidad de entregabilidad, **vale la pena pagar por un dominio y hosting propios**. Los servicios gratuitos de email transaccional están diseñados para pruebas, no para producción. La entregabilidad es el verdadero desafío del correo electrónico, no el envío en sí.
+
+---
+
+### Fase 3: Sistema de Notificaciones por Correo
+
+**Commit:** `ff3aed6` — Sistema completo de notificaciones
+
+**Cambios realizados:**
+
+1. **Nueva función `sendNotificationEmail()` en server.js:**
+   - Detecta cambios en bugs comparando `oldBugs` (estado antes de guardar) con `updatedBug` (nuevo estado)
+   - Identifica campos modificados: `status`, `priority`, `assignedTo`, `title`, `comments`
+   - Construye lista de destinatarios: creador del bug + usuario asignado (si cambió) + admin (siempre)
+   - Respeta preferencia `notifications: false` del usuario
+   - Formato HTML con diseño responsive para clientes de correo
+   - Envío asíncrono (no bloquea la respuesta HTTP)
+
+2. **Endpoint `PATCH /api/users/:id`:**
+   - Permite toggle de preferencia de notificaciones
+   - Solo el propio usuario puede modificar sus preferencias
+   - Campo: `{ "notifications": true/false }`
+
+3. **UI de perfil con checkbox de notificaciones:**
+   - Checkbox "Recibir notificaciones por correo" en el panel de perfil
+   - Guardado instantáneo al cambiar (sin botón de submit adicional)
+   - Feedback visual con cambio de estado
+
+#### Errores encontrados y corregidos en esta fase
+
+##### ❌ Error 6: ReferenceError silencioso que mataba las notificaciones
+
+**Síntoma:** Las notificaciones simplemente no se enviaban. Los logs del servidor mostraban peticiones HTTP llegando al endpoint, pero el log de diagnóstico decía `"Cambios detectados: 0"` incluso cuando había cambios obvios.
+
+**Causa raíz:** Un `console.log` de diagnóstico hacía referencia a `Object.keys(oldBugs)` y `Object.keys(newBugs)` **antes** de que esas variables fueran declaradas. Las variables se declaraban 3 líneas después, dentro de un bloque `if`. El `ReferenceError` mataba silenciosamente la ejecución de la función de notificaciones.
+
+```javascript
+// ❌ Código con bug:
+console.log('Comparando:', Object.keys(oldBugs), '->', Object.keys(newBugs));
+// ... otras líneas ...
+if (bugId) {
+    const oldBugs = ...;  // Declarado demasiado tarde
+    const newBugs = ...;  // Declarado demasiado tarde
 }
 ```
 
-### Jerarquía
+**Solución:** Mover el `console.log` de diagnóstico **dentro** del bloque `if` donde las variables existen:
+```javascript
+// ✅ Código corregido:
+if (bugId) {
+    const oldBugs = ...;
+    const newBugs = ...;
+    console.log('Comparando:', Object.keys(oldBugs), '->', Object.keys(newBugs));
+}
 ```
-Store
-└── Versions (ocultas, solo se usa __default__)
-    └── Lists (las "carpetas" de bugs)
-        └── Bugs (las tareas/incidencias)
-            └── Comments (historial de comentarios)
-```
+
+**Lección → [ver Error 6 en sección 4](#error-6-referenceerror-silencioso-en-notificaciones)**
 
 ---
 
-## 4. Sistema de Autenticación
+##### ❌ Error 7: `superUser` indefinido — Admin no recibía notificaciones
 
-### Flujo de autenticación
-1. El servidor inyecta los datos de usuarios en el HTML al servirlo
-2. `Auth.load()` lee `window.__SERVER_DATA__.users` (prioridad) o `localStorage`
-3. Si no hay usuarios → muestra formulario de "Super Usuario" (primera vez)
-4. Login compara username + password (Base64) en memoria
-5. La sesión se guarda en `localStorage.bugtracker_session`
+**Síntoma:** El administrador no recibía notificaciones de cambios en tareas **no asignadas** a nadie. Si una tarea sin `assignedTo` era modificada, solo se notificaba al creador, no al admin.
+
+**Causa raíz:** La variable `superUser` se definía **dentro** del bloque `if (changed.length > 0)`:
+```javascript
+if (changed.length > 0) {
+    const superUser = users.find(u => u.role === 'admin');
+    // ...
+}
+```
+
+Pero se necesitaba **antes** de ese bloque para decidir la lista de destinatarios:
+```javascript
+// Necesitaba superUser aquí para añadirlo a recipients
+recipients.add(superUser.email);
+```
+
+**Solución:** Mover `const superUser = users.find(u => u.role === 'admin')` al principio de la función `sendNotificationEmail()`, antes de cualquier condicional.
+
+**Lección → [ver Error 7 en sección 4](#error-7-superuser-indefinido--el-admin-no-recibía-notificaciones)**
+
+---
+
+##### ❌ Error 8: Formato de email con `\n` literales
+
+**Síntoma:** Los correos llegaban con `\n` visibles en el texto (los dos caracteres backslash + n) en lugar de saltos de línea reales. El texto aparecía como una sola línea larga con `\n` esparcidos.
+
+**Causa raíz:** Los datos del bug (title, description, comments) viajan serializados por JSON. Cuando JavaScript serializa un string que contiene saltos de línea reales (`\n` como carácter 0x0A), los representa como el escape `\\n` (dos caracteres: backslash y 'n'). Al pasarlos a `toHtml()`, estos escapados no se interpretaban como saltos de línea.
+
+**Solución:** Añadir `.replace(/\\n/g, '\n')` al texto del correo **antes** de convertirlo a HTML con `toHtml()`:
+```javascript
+const textNormalized = emailText.replace(/\\n/g, '\n');
+const htmlBody = textNormalized.toHtml(); // Convierte saltos reales a <br>
+```
+
+**Lección → [ver Error 8 en sección 4](#error-8-formato-de-email-con-n-literales)**
+
+---
+
+##### ❌ Error 9: Variable `users` usada antes de declararse
+
+**Síntoma:** Similar al Error 6. La función fallaba silenciosamente en ciertos flujos de ejecución porque `users` no estaba disponible cuando se necesitaba.
+
+**Causa raíz:** La variable `users` se leía de `USERS_FILE` dentro de un bloque `if` que no siempre se ejecutaba:
+```javascript
+// ❌ Bug: users solo existe si se entra en este if
+if (someCondition) {
+    const users = JSON.parse(fs.readFileSync(USERS_FILE, 'utf8'));
+}
+// users no existe aquí si someCondition era false
+```
+
+**Solución:** Leer `users` al inicio de la función, incondicionalmente:
+```javascript
+// ✅ Corrección:
+const users = JSON.parse(fs.readFileSync(USERS_FILE, 'utf8'));
+// Ahora users siempre está disponible
+```
+
+**Lección → [ver Error 9 en sección 4](#error-9-variable-users-usada-antes-de-declararse)**
+
+---
+
+### Fase 4: Edición de Comentarios
+
+**Estado:** NO commiteado aún
+
+**Cambios en backend (server.js):**
+
+- **Nuevo endpoint:** `PUT /api/comments`
+  - Autenticación requerida
+  - Solo el **autor del comentario** o un **admin** pueden editar
+  - Busca el comentario dentro del array `comments` del bug correspondiente
+  - Añade metadatos de edición:
+    - `editedAt`: timestamp ISO de la edición
+    - `editedBy`: userId de quien realizó la edición
+  - Devuelve el bug completo actualizado
+
+**Cambios en frontend (app.js):**
+
+- **Botón de editar (✏️):** visible solo para el autor del comentario o admin, junto al texto del comentario
+- **Función `startEditComment(bugId, commentId)`:**
+  - Oculta el texto del comentario
+  - Muestra un `<textarea>` pre-rellenado con el texto actual
+  - Muestra botones "Guardar" y "Cancelar"
+- **Función `saveEditComment(bugId, commentId)`:**
+  - Envía `PUT /api/comments` con el nuevo texto
+  - Recibe el bug actualizado
+  - Actualiza los comentarios en la UI
+- **Función `cancelEditComment(bugId, commentId)`:**
+  - Restaura el texto original
+  - Oculta el textarea y muestra el texto normal
+
+#### Errores en esta fase
+
+##### ❌ Error 10: CRÍTICO — `app.js` truncado a 1198 líneas
+
+**Síntoma:** Tras aplicar el parche de edición de comentarios al frontend, el usuario reportó que **no podía acceder a las tareas**. La ventana de detalle de bug no se abría. El tablero principal se veía pero ninguna interacción funcionaba.
+
+**Causa raíz:** Al aplicar el parche para modificar la función `renderComments`, se borraron accidentalmente **397 líneas** (de ~1595 líneas totales a 1198). Las funciones perdidas incluían:
+
+- `openBugModal(bugId)` — abrir detalle de tarea
+- `openBugModalWithContext(bugId, listId)` — abrir con contexto de columna
+- `openResolveModal(bugId)` — modal de resolución
+- `confirmAction(message, callback)` — confirmación genérica
+- `escapeHtml(str)` — sanitización de HTML
+- `getAssignees()` — obtener lista de usuarios asignables
+- `openReportModal()` — modal de reportes
+- `generateReport()` — generación de reportes CSV
+
+**Cómo ocurrió:** El diff original estaba diseñado para reemplazar únicamente la función `renderComments`, pero el heredoc o `sed` utilizado para aplicar el parche incluyó la **eliminación de todo el bloque intermedio** entre el marcador de inicio y la función `renderComments`.
+
+**Solución (2 pasos):**
+
+1. **Restauración de emergencia:** `git checkout -- app.js` para recuperar la versión intacta del repositorio
+2. **Parche quirúrgico:** Se escribió un **script Python** que:
+   - Lee el archivo `app.js` completo
+   - Busca la función `renderComments` por firma exacta
+   - Reemplaza solo esa función con la nueva versión
+   - **Verifica integridad post-parche**: confirma que todas las funciones críticas (`openBugModal`, `escapeHtml`, `generateReport`, etc.) siguen presentes en el archivo
+   - Si falta alguna función, aborta y reporta el error
+
+**Lección → [ver Error 10 en sección 4](#error-10-crítico--appjs-truncado-a-1198-líneas)**
+
+---
+
+##### ❌ Error 11: `render()` destruye la ventana de detalle
+
+**Síntoma:** Tras corregir el Error 10 y restaurar las funciones, la edición de comentarios funcionaba pero con un efecto secundario grave:
+
+- **Usuario normal (no-admin):** Al guardar un comentario editado, la ventana de detalle se **cerraba inmediatamente**. El comentario se guardaba en el servidor, pero la experiencia de usuario era terrible: parecía que la acción había fallado o cancelado.
+- **Admin:** La ventana de detalle permanecía abierta (porque el admin estaba viendo el tablero completo), pero el cambio solo se reflejaba al cerrar y reabrir manualmente.
+
+**Causa raíz:** La función `saveEditComment()` llamaba a `render()` después de recibir la respuesta del servidor:
+```javascript
+// ❌ Código con bug:
+async function saveEditComment(bugId, commentId) {
+    const response = await fetch('/api/comments', { ... });
+    const updatedBug = await response.json();
+    render(); // 💣 Esto reconstruye TODO el tablero
+}
+```
+
+`render()` es una operación **destructiva** que:
+1. Limpia completamente el DOM del tablero
+2. Reconstruye las listas de columnas (To Do, In Progress, Done)
+3. Re-aplica filtros
+4. Re-renderiza todas las tarjetas de bugs
+
+Esto **destruye cualquier ventana de detalle abierta**, ya que el modal de detalle del bug está anclado al DOM que `render()` elimina.
+
+**Solución:** Quitar la llamada a `render()`. La función `renderComments(refreshed)` ya es suficiente para actualizar los comentarios inline en la ventana de detalle sin destruir el resto de la UI:
+```javascript
+// ✅ Código corregido:
+async function saveEditComment(bugId, commentId) {
+    const response = await fetch('/api/comments', { ... });
+    const updatedBug = await response.json();
+    renderComments(updatedBug); // Solo actualiza comentarios, no destruye nada
+}
+```
+
+**Lección → [ver Error 11 en sección 4](#error-11-render-destruye-la-ventana-de-detalle)**
+
+---
+
+### Fase 5: Corrupción de `app.js` Restaurado
+
+**Contexto:** Durante la recuperación del Error 10, se descubrió un problema adicional.
+
+#### ❌ Error 12: `app.js` restaurado desde Git estaba vacío
+
+**Síntoma:** Al ejecutar `git checkout -- app.js` para restaurar el archivo tras el Error 10, el archivo recuperado tenía **0 líneas** (vacío). El comando se ejecutó sin errores pero el resultado era un archivo sin contenido.
+
+**Causa raíz:** En algún momento anterior, un `scp`, `rsync` o heredoc había truncado `app.js` a 0 bytes y ese estado corrupto fue commiteado accidentalmente (o el último commit no tenía el archivo). Git almacenaba la versión vacía como la "última versión buena".
+
+**Solución:** Hacer checkout desde un commit anterior donde se sabía que el archivo estaba íntegro:
+```bash
+git log --oneline -- app.js          # Ver historial del archivo
+git checkout <commit_anterior> -- app.js  # Restaurar desde commit seguro
+```
+
+**Lección → [ver Error 12 en sección 4](#error-12-appjs-restaurado-vacío-desde-git)**
+
+---
+
+## 4. 🛑 Errores y Lecciones Aprendidas
+
+> **Esta es la sección más importante de la documentación.** Cada error está documentado con su síntoma observable, causa raíz, solución aplicada y lección extraída para evitar repetirlo.
+
+---
+
+### Error 1: Migración de hash rompió usuarios existentes
+
+| Campo | Detalle |
+|--------|---------|
+| **Fase** | 1 — Seguridad |
+| **Commit** | `1e05bd1` |
+| **Severidad** | 🔴 Alta (bloquea acceso a todos los usuarios) |
+| **Tiempo hasta detección** | Inmediato (primer intento de login) |
+| **Tiempo hasta solución** | ~10 minutos |
+
+**Síntoma:**
+Ningún usuario podía iniciar sesión después de implementar PBKDF2. El servidor no daba errores explícitos, simplemente devolvía `401 Unauthorized` para todas las credenciales, incluso las correctas.
+
+**Causa raíz:**
+El nuevo método `verifyPassword(password, storedHash)` asume que `storedHash` tiene formato `saltHex:derivedKeyHex`. Al llamar `storedHash.split(':')`, si el valor es texto plano (ej. `"admin123"`), el split produce `["admin123"]` (array de un elemento) y `derivedKeyHex` queda como `undefined`. La comparación siempre falla.
+
+**Solución:**
+Limpieza total de `data/users.json` (array vacío `[]`), forzando re-registro de todos los usuarios. No se implementó script de migración.
+
+**Lección:**
+> **Las migraciones de esquema de datos requieren scripts de migración, no solo cambiar el código.** Un cambio en el formato de almacenamiento de datos (texto plano → hash) debe incluir un script que itere sobre los registros existentes, los transforme al nuevo formato, y verifique la integridad. Limpiar la base de datos es aceptable en desarrollo temprano, pero catastrófico en producción.
+
+**Checklist para futuras migraciones de datos:**
+- [ ] Script de migración que lea el formato antiguo
+- [ ] Transformación campo por campo con validación
+- [ ] Backup de los datos originales antes de migrar
+- [ ] Verificación post-migración (al menos un registro de prueba)
+- [ ] Rollback plan por si la migración falla
+
+---
+
+### Error 2: Resend API — Sandbox Restriction
+
+| Campo | Detalle |
+|--------|---------|
+| **Fase** | 2 — Envío de correos |
+| **Commit** | `0b1dc90` |
+| **Severidad** | 🟡 Media (bloquea funcionalidad pero no el sistema) |
+| **Tiempo hasta detección** | ~30 minutos (prueba con email no verificado) |
+| **Tiempo hasta solución** | ~2 horas (investigación + cambio de provider) |
+
+**Síntoma:**
+`403 Forbidden` al enviar correos a cualquier destinatario que no fuera el email del propietario de la cuenta Resend.
+
+**Causa raíz:**
+Desconocimiento de las restricciones del plan gratuito de Resend. La documentación indica que en modo sandbox solo se puede enviar a "verified emails", pero este detalle se pasó por alto al elegir el provider.
+
+**Solución:**
+Abandonar Resend y buscar alternativas SMTP.
+
+**Lección:**
+> **Leer los límites del plan gratuito ANTES de implementar.** No asumir que "gratuito" significa "sin restricciones para desarrollo". Cada servicio tiene limitaciones específicas (destinatarios, volumen, dominio, autenticación) que deben evaluarse contra los requisitos del proyecto antes de escribir una sola línea de código.
+
+---
+
+### Error 3: Gmail SMTP — Less Secure Apps bloqueado
+
+| Campo | Detalle |
+|--------|---------|
+| **Fase** | 2 — Envío de correos |
+| **Commit** | `c35297c` |
+| **Severidad** | 🟡 Media |
+| **Tiempo hasta detección** | ~5 minutos (primer intento de conexión) |
+| **Tiempo hasta solución** | ~1 hora (investigación + cambio de provider) |
+
+**Síntoma:**
+`535 5.7.8 Username and Password not accepted. Application-specific password required.`
+
+**Causa raíz:**
+Google eliminó el soporte para "Less secure apps" (aplicaciones que usan usuario/contraseña directamente sin OAuth2). Esto aplica a todas las cuentas Gmail, personales y de Google Workspace.
+
+**Solución:**
+Abandonar Gmail SMTP. La alternativa (OAuth2 + Google Cloud Console) se consideró excesivamente compleja.
+
+**Lección:**
+> **Los providers grandes de correo (Google, Microsoft) tienen capas de seguridad que hacen inviable SMTP básico con usuario/contraseña.** Para envío transaccional, usar servicios diseñados para ello (SendGrid, Mailgun, Brevo, SMTP de hosting) o implementar OAuth2 si es estrictamente necesario usar Gmail/Outlook.
+
+---
+
+### Error 4: Outlook SMTP — SMTP Auth deshabilitado
+
+| Campo | Detalle |
+|--------|---------|
+| **Fase** | 2 — Envío de correos |
+| **Commit** | `ef2b39b` |
+| **Severidad** | 🟡 Media |
+| **Tiempo hasta detección** | ~5 minutos |
+| **Tiempo hasta solución** | ~1 hora |
+
+**Síntoma:**
+`535 5.7.139 Authentication unsuccessful, SmtpClientAuthentication is disabled for the Mailbox.`
+
+**Causa raíz:**
+Microsoft deshabilitó SMTP AUTH básico para cuentas nuevas de Outlook.com. Es una política a nivel de tenant que no se puede modificar para cuentas personales gratuitas.
+
+**Solución:**
+Abandonar Outlook SMTP.
+
+**Lección:**
+> Misma lección que con Gmail. **Los proveedores de correo de consumo (B2C) no están diseñados para SMTP transaccional.** Microsoft y Google han ido cerrando progresivamente el acceso SMTP básico en favor de OAuth2 y APIs modernas (Microsoft Graph, Gmail API). Para uso transaccional, recurrir a servicios especializados.
+
+---
+
+### Error 5: Brevo SMTP Relay — Correos nunca entregados
+
+| Campo | Detalle |
+|--------|---------|
+| **Fase** | 2 — Envío de correos |
+| **Commit** | No commiteado |
+| **Severidad** | 🟡 Media (el error más sutil de esta fase) |
+| **Tiempo hasta detección** | ~4 horas (aceptación vs. entregabilidad) |
+| **Tiempo hasta solución** | ~3 horas (investigación + cambio a Hostinger) |
+
+**Síntoma:**
+El servidor SMTP de Brevo respondía `250 OK` (mensaje aceptado para entrega) en todas las operaciones. Cero errores visibles en logs. Pero **ningún correo llegaba** al destinatario — ni a la bandeja de entrada ni a la carpeta de spam. Silencio absoluto.
+
+**Causas (múltiples, en cascada):**
+
+1. **Reputación de relay compartido:** `smtp-relay.brevo.com` usa direcciones de remitente genéricas (`@smtp-brevo.com`) en el plan gratuito. Estas direcciones tienen baja reputación porque son compartidas por miles de remitentes, muchos de ellos legítimos pero otros potencialmente problemáticos.
+
+2. **SPF/DKIM sin configurar:** Sin un dominio propio verificado con registros SPF y DKIM apuntando a Brevo, los servidores receptores no pueden verificar que Brevo está autorizado a enviar correos en nombre del dominio del remitente.
+
+3. **Filtros anti-spam silenciosos:** Gmail, Outlook y otros providers simplemente descartan (silent drop) correos que no pasan verificaciones de autenticación, sin rebotarlos. Esto hace que el diagnóstico sea extremadamente difícil porque no hay mensaje de error.
+
+**Solución:**
+Migrar a Hostinger SMTP con dominio propio (`bugtracker.pro`).
+
+**Lección:**
+> **La entregabilidad es el verdadero desafío del email transaccional, no el envío.** Un correo "enviado con éxito" (respuesta 250 del servidor SMTP) no significa "entregado". Los relays SMTP gratuitos tienen mala reputación de dominio y los filtros anti-spam modernos descartan correos silenciosamente sin notificar al remitente. Para producción, es necesario:
+> - Dominio propio con reputación limpia
+> - SPF, DKIM y DMARC correctamente configurados
+> - IP de envío dedicada (idealmente) o relay de confianza
+> - Monitoreo de entregabilidad (no solo de envío)
+
+---
+
+### Error 6: ReferenceError silencioso en notificaciones
+
+| Campo | Detalle |
+|--------|---------|
+| **Fase** | 3 — Notificaciones |
+| **Commit** | `ff3aed6` |
+| **Severidad** | 🔴 Alta (funcionalidad completamente rota sin error visible) |
+| **Tiempo hasta detección** | ~1 hora (diagnóstico difícil por silencio del error) |
+| **Tiempo hasta solución** | ~15 minutos |
+
+**Síntoma:**
+- Las notificaciones por correo simplemente no se enviaban
+- Los logs del servidor mostraban peticiones llegando al endpoint
+- El log de diagnóstico decía `"Cambios detectados: 0"` para todos los cambios
+- **No había errores en consola ni stack traces** — el error era silencioso
+
+**Causa raíz:**
+Un `console.log` de diagnóstico referenciaba variables que aún no existían:
+```javascript
+console.log('Comparando:', Object.keys(oldBugs), '->', Object.keys(newBugs));
+// ... código ...
+if (bugId) {
+    const oldBugs = ...;  // oldBugs no existe antes de esta línea
+    const newBugs = ...;  // newBugs no existe antes de esta línea
+}
+```
+
+Aunque oldBugs/newBugs se declaraban con `const` dentro del bloque `if`, el `console.log` que las referenciaba estaba **fuera y antes** del bloque. Esto producía un `ReferenceError` que mataba la función `sendNotificationEmail()` sin que nadie lo notara porque:
+- Las notificaciones se envían de forma asíncrona (no bloquean la respuesta HTTP)
+- El `try/catch` de la ruta principal no capturaba errores en callbacks asíncronos
+- El error no se logueaba a ningún lado
+
+**Solución:**
+Mover el `console.log` de diagnóstico **dentro** del bloque `if`:
+```javascript
+if (bugId) {
+    const oldBugs = ...;
+    const newBugs = ...;
+    console.log('Comparando:', Object.keys(oldBugs), '->', Object.keys(newBugs));
+}
+```
+
+**Lección:**
+> **No usar variables en logs de diagnóstico si no están garantizadas.** Poner los logs DENTRO del bloque donde se declaran las variables que referencian. Un `ReferenceError` en código asíncrono puede ser devorado silenciosamente sin stack trace, haciendo el diagnóstico extremadamente difícil. Como regla general: los logs de diagnóstico deben vivir en el mismo scope que las variables que inspeccionan.
+
+---
+
+### Error 7: `superUser` indefinido — El admin no recibía notificaciones
+
+| Campo | Detalle |
+|--------|---------|
+| **Fase** | 3 — Notificaciones |
+| **Commit** | `ff3aed6` |
+| **Severidad** | 🟡 Media (el admin no se enteraba de cambios) |
+| **Tiempo hasta detección** | ~30 minutos |
+| **Tiempo hasta solución** | ~5 minutos |
+
+**Síntoma:**
+El administrador no recibía notificaciones de cambios en tareas **sin asignar** (donde `assignedTo` es `null`). Las notificaciones para tareas con asignado funcionaban correctamente.
+
+**Causa raíz:**
+`superUser` se declaraba dentro del bloque `if (changed.length > 0)`, pero se intentaba usar antes de ese bloque para añadir al admin a la lista de destinatarios:
+```javascript
+const recipients = new Set();
+recipients.add(superUser.email);  // ❌ superUser no existe aquí
+
+if (changed.length > 0) {
+    const superUser = users.find(u => u.role === 'admin'); // Demasiado tarde
+    // ...
+}
+```
+
+**Solución:**
+Mover la declaración de `superUser` al principio de la función:
+```javascript
+function sendNotificationEmail(...) {
+    const users = JSON.parse(fs.readFileSync(USERS_FILE, 'utf8'));
+    const superUser = users.find(u => u.role === 'admin'); // ✅ Disponible siempre
+    const recipients = new Set();
+    recipients.add(superUser.email); // ✅ Funciona
+    // ...
+}
+```
+
+**Lección:**
+> **Las variables de control de flujo deben declararse al principio de la función, no dentro de condicionales.** Si una variable se necesita en múltiples ramas de ejecución o antes de un condicional, su declaración debe estar en el scope más externo posible. Esto aplica especialmente a variables de "configuración" como el usuario admin, umbrales, o constantes derivadas de datos.
+
+---
+
+### Error 8: Formato de email con `\n` literales
+
+| Campo | Detalle |
+|--------|---------|
+| **Fase** | 3 — Notificaciones |
+| **Commit** | `ff3aed6` |
+| **Severidad** | 🟢 Baja (email legible pero con formato roto) |
+| **Tiempo hasta detección** | ~15 minutos (primer email de prueba) |
+| **Tiempo hasta solución** | ~5 minutos |
+
+**Síntoma:**
+Los correos electrónicos llegaban con `\n` visibles (los caracteres literales backslash + n) en lugar de saltos de línea. Ejemplo:
+```
+Tarea actualizada\n\nTítulo: Arreglar login\nPrioridad: high → critical\n
+```
+
+**Causa raíz:**
+Cuando JavaScript serializa/deserializa strings a través de JSON, los saltos de línea reales (carácter ASCII 0x0A) se representan como el escape `\n`. Si el texto pasa por `JSON.stringify` → `JSON.parse` (o se almacena en `store.json`), los `\n` reales se convierten en la secuencia de dos caracteres `\` y `n`. Al pasarlos directamente a `toHtml()` (que convierte saltos de línea reales a `<br>`), estos escapes no se interpretan.
+
+**Solución:**
+Añadir `.replace(/\\n/g, '\n')` antes de la conversión a HTML:
+```javascript
+const plainText = emailBody.replace(/\\n/g, '\n');
+const htmlBody = plainText.replace(/\n/g, '<br>');
+```
+
+**Lección:**
+> **Los datos que viajan por JSON pueden escapar los saltos de línea.** Normalizar siempre antes de transformar a HTML. La tubería de datos típica es: `dato original` → `JSON.stringify` (escapa \n) → `almacenamiento/transporte` → `JSON.parse` (mantiene \\n) → `.replace(/\\n/g, '\n')` → `transformación a HTML`. Asumir que un string tiene saltos de línea reales después de pasar por JSON es un error común.
+
+---
+
+### Error 9: Variable `users` usada antes de declararse
+
+| Campo | Detalle |
+|--------|---------|
+| **Fase** | 3 — Notificaciones |
+| **Commit** | `ff3aed6` |
+| **Severidad** | 🟡 Media |
+| **Tiempo hasta detección** | ~20 minutos |
+| **Tiempo hasta solución** | ~5 minutos |
+
+**Síntoma:**
+Similar al Error 6: la función de notificaciones fallaba silenciosamente en ciertos flujos de ejecución. El patrón era idéntico al Error 7.
+
+**Causa raíz:**
+La variable `users` se leía de `USERS_FILE` dentro de un bloque `if` cuya condición no siempre era verdadera. Fuera de ese bloque, `users` era `undefined`.
+
+**Solución:**
+Mover `const users = JSON.parse(fs.readFileSync(USERS_FILE, 'utf8'))` al inicio de la función, antes de cualquier condicional.
+
+**Lección:**
+> **Leer dependencias de datos al inicio de la función, no bajo condiciones.** Las operaciones de I/O que producen datos necesarios para la lógica de la función (como leer `users.json`) deben hacerse de forma incondicional al principio. Si hay preocupación de rendimiento, usar memoización o caché, pero nunca esconder la lectura dentro de un condicional.
+
+---
+
+### Error 10: CRÍTICO — `app.js` truncado a 1198 líneas
+
+| Campo | Detalle |
+|--------|---------|
+| **Fase** | 4 — Edición de comentarios |
+| **Commit** | No commiteado aún |
+| **Severidad** | 🔴🔴 CRÍTICA (pérdida masiva de funcionalidad) |
+| **Tiempo hasta detección** | ~5 minutos (el usuario reportó inmediatamente) |
+| **Tiempo hasta solución** | ~45 minutos (restauración + parche quirúrgico) |
+
+**Síntoma:**
+- El usuario reportó que **no podía acceder a las tareas**
+- El tablero principal se veía correctamente
+- Al hacer clic en cualquier bug, no pasaba nada (no se abría la ventana de detalle)
+- Los botones de crear bug y otras funcionalidades no respondían
+- La consola del navegador mostraba `Uncaught ReferenceError: openBugModal is not defined`
+
+**Causa raíz:**
+Se borraron accidentalmente **397 líneas** de `app.js` (de ~1595 a 1198). Las funciones perdidas eran exactamente las que gestionaban toda la interacción del usuario:
+
+| Función perdida | Impacto |
+|----------------|---------|
+| `openBugModal(bugId)` | No se podía ver detalle de ningún bug |
+| `openBugModalWithContext(bugId, listId)` | No se podía abrir bug desde columna específica |
+| `openResolveModal(bugId)` | No se podía resolver/cerrar bugs |
+| `confirmAction(message, callback)` | No funcionaban confirmaciones (eliminar, etc.) |
+| `escapeHtml(str)` | Posible vulnerabilidad XSS si otras funciones la usaban |
+| `getAssignees()` | No se podía asignar bugs a usuarios |
+| `openReportModal()` | No se podía abrir ventana de reportes |
+| `generateReport()` | No se podía generar reportes CSV |
+
+**Cómo ocurrió exactamente:**
+El diff original para añadir edición de comentarios reemplazaba la función `renderComments`. Pero el método usado para aplicar el parche (presumiblemente `sed` o un heredoc con delimitadores) capturó un rango incorrecto de líneas, eliminando todo desde un marcador de inicio hasta el final de `renderComments`, incluyendo cientos de líneas de funciones no relacionadas.
+
+**Solución (protocolo de emergencia):**
+
+1. **Restauración inmediata:**
+   ```bash
+   git checkout -- app.js
+   ```
+   Esto recuperó la versión íntegra del repositorio.
+
+2. **Verificación de integridad:**
+   ```bash
+   wc -l app.js  # Confirmar que no está vacío (ver Error 12)
+   ```
+
+3. **Parche quirúrgico con Python:**
+   ```python
+   # Script que:
+   # 1. Lee app.js completo
+   # 2. Busca función renderComments por firma
+   # 3. Reemplaza solo el cuerpo de la función
+   # 4. Verifica que openBugModal, escapeHtml, generateReport sigan presentes
+   # 5. Aborta si falta alguna función crítica
+   ```
+
+**Lección (la más importante de todo el proyecto):**
+> **NUNCA usar sed/heredocs para editar archivos remotos grandes.** La edición de archivos por rangos de líneas o delimitadores de texto es inherentemente frágil. Un solo error en el patrón puede destruir cientos de líneas. En su lugar:
+> - **Usar scripts Python con verificación de integridad** (checker post-parche que confirme la presencia de funciones clave)
+> - **Preferir `git apply` con patches generados por `git diff`** (formato unificado con contexto)
+> - **Hacer backup explícito antes de parchear**: `cp app.js app.js.bak.$(date +%s)`
+> - **Verificar `wc -l` y hashes** antes y después de cada modificación
+
+---
+
+### Error 11: `render()` destruye la ventana de detalle
+
+| Campo | Detalle |
+|--------|---------|
+| **Fase** | 4 — Edición de comentarios |
+| **Commit** | No commiteado aún |
+| **Severidad** | 🟡 Media (UI rota pero datos intactos) |
+| **Tiempo hasta detección** | ~30 minutos (comportamiento sutil, diferente para admin vs user) |
+| **Tiempo hasta solución** | ~10 minutos |
+
+**Síntoma:**
+- **Usuario normal:** Al guardar un comentario editado, la ventana de detalle del bug **se cerraba** abruptamente. El comentario sí se guardaba en el servidor, pero el usuario no lo veía reflejado hasta reabrir manualmente el bug. La experiencia sugería que la acción había fallado.
+- **Admin:** La ventana de detalle permanecía abierta (porque el admin veía el tablero completo en lugar de un modal), pero el cambio no se reflejaba en los comentarios mostrados. Solo al cerrar y reabrir manualmente se veía la edición.
+
+**Causa raíz:**
+`saveEditComment()` llamaba a `render()` después de recibir la respuesta del servidor. `render()` es una operación **destructiva a nivel de DOM** que:
+1. Vacía completamente el contenedor principal del tablero
+2. Reconstruye todas las columnas (To Do, In Progress, Done)
+3. Re-aplica filtros activos
+4. Re-renderiza cada tarjeta de bug
+
+Esto inevitablemente **destruye cualquier modal o ventana de detalle** que estuviera abierta, porque esos elementos del DOM son eliminados cuando `render()` limpia el contenedor.
+
+**Solución:**
+Eliminar la llamada a `render()` de `saveEditComment()`. La función `renderComments(updatedBug)` ya es suficiente para:
+- Actualizar el texto y metadatos del comentario inline
+- Mostrar el indicador "(editado)" y timestamp de edición
+- No tocar el resto de la UI
+
+```javascript
+// ❌ Antes:
+async function saveEditComment(bugId, commentId) {
+    const updatedBug = await response.json();
+    render();              // 💣 Destruye todo
+    renderComments(updatedBug);
+}
+
+// ✅ Después:
+async function saveEditComment(bugId, commentId) {
+    const updatedBug = await response.json();
+    renderComments(updatedBug); // ✅ Solo actualiza comentarios
+}
+```
+
+**Lección:**
+> **`render()` es una operación destructiva que reconstruye toda la UI. No llamarla para cambios locales.** Para actualizaciones puntuales (un comentario, un cambio de estado, una etiqueta), usar funciones de actualización dirigidas que solo modifiquen los elementos del DOM relevantes. `render()` debe reservarse para cambios estructurales: nuevo bug, eliminación de bug, cambio de filtros globales, o recarga completa de datos.
+
+---
+
+### Error 12: `app.js` restaurado vacío desde Git
+
+| Campo | Detalle |
+|--------|---------|
+| **Fase** | 5 — Corrupción |
+| **Commit** | N/A (problema de repositorio) |
+| **Severidad** | 🔴 Alta (fuente de verdad corrupta) |
+| **Tiempo hasta detección** | ~2 minutos (`wc -l` post-checkout) |
+| **Tiempo hasta solución** | ~10 minutos (checkout desde commit anterior) |
+
+**Síntoma:**
+Tras ejecutar `git checkout -- app.js` para restaurar el archivo (durante la recuperación del Error 10), el archivo resultante tenía **0 líneas**:
+```bash
+$ wc -l app.js
+0 app.js
+```
+
+**Causa raíz:**
+En algún momento previo, una transferencia de archivos (`scp`, `rsync`, o heredoc) había truncado `app.js` a 0 bytes. Este estado corrupto quedó registrado en el commit más reciente del repositorio. Al hacer checkout, Git restauró fielmente... la nada misma.
+
+**Solución:**
+1. Identificar el último commit donde el archivo estaba íntegro:
+   ```bash
+   git log --oneline -- app.js
+   ```
+2. Hacer checkout desde ese commit:
+   ```bash
+   git checkout <hash_del_commit_bueno> -- app.js
+   ```
+3. Verificar integridad:
+   ```bash
+   wc -l app.js  # Debe mostrar ~1595 líneas
+   ```
+
+**Lección:**
+> **Verificar `wc -l` después de cada transferencia de archivos.** Preferir `git` como fuente de verdad, pero verificar que la fuente de verdad no esté corrupta. Un archivo vacío es un commit válido para Git — no hay advertencia. Como práctica defensiva:
+> - Después de `scp`/`rsync`: verificar tamaño (`wc -l` o `wc -c`)
+> - Después de editar remotamente: verificar que funciones clave sigan presentes
+> - Antes de commit: `git diff --stat` para ver qué archivos cambiaron y cuánto
+> - Considerar un hook pre-commit que rechace archivos vacíos que antes no lo estaban
+
+---
+
+## 5. Configuración SMTP
+
+### Configuración actual (Hostinger)
+
+| Variable de entorno | Valor |
+|---------------------|-------|
+| `SMTP_HOST` | `smtp.hostinger.com` |
+| `SMTP_PORT` | `465` |
+| `SMTP_SECURE` | `true` (SSL/TLS implícito) |
+| `SMTP_USER` | `admin@bugtracker.pro` |
+| `SMTP_PASS` | `[REDACTED]` |
+| `SMTP_FROM` | `"Bug Tracker" <admin@bugtracker.pro>` |
+
+### Historial de providers probados
+
+| Provider | Host | Resultado | Motivo del fallo |
+|----------|------|-----------|------------------|
+| Resend API | `api.resend.com` | ❌ | Sandbox: solo emails verificados |
+| Gmail SMTP | `smtp.gmail.com:587` | ❌ | Less secure apps bloqueado |
+| Outlook SMTP | `smtp-mail.outlook.com:587` | ❌ | SMTP Auth deshabilitado |
+| Brevo Relay | `smtp-relay.brevo.com:465` | ❌ | 0% entregabilidad (spam/dominio) |
+| **Hostinger** | `smtp.hostinger.com:465` | ✅ | **Dominio propio, entregabilidad 100%** |
+
+### Notas importantes sobre SMTP
+
+1. **Nunca incluir credenciales reales en logs o documentación.** Las contraseñas SMTP deben ir exclusivamente en variables de entorno o un archivo `.env` excluido de Git.
+
+2. **Puerto 465 vs 587:**
+   - `465`: SSL/TLS implícito (conexión segura desde el primer byte)
+   - `587`: STARTTLS (conexión en texto plano que se actualiza a TLS)
+   - Hostinger requiere 465 con `secure: true`
+
+3. **Entregabilidad:** El éxito técnico del envío (respuesta 250 del servidor SMTP) **no garantiza la entrega**. La entregabilidad depende de SPF, DKIM, DMARC, reputación de IP y dominio.
+
+---
+
+## 6. API Endpoints
+
+### Autenticación
+
+| Método | Ruta | Auth | Descripción |
+|--------|------|------|-------------|
+| `POST` | `/api/register` | No | Registrar nuevo usuario |
+| `POST` | `/api/login` | No | Iniciar sesión, devuelve token |
+| `GET` | `/api/me` | Bearer | Obtener perfil del usuario autenticado |
+
+### Bugs
+
+| Método | Ruta | Auth | Descripción |
+|--------|------|------|-------------|
+| `GET` | `/api/bugs` | Bearer | Listar todos los bugs |
+| `POST` | `/api/bugs` | Bearer | Crear nuevo bug |
+| `PUT` | `/api/bugs/:id` | Bearer | Actualizar bug existente |
+| `DELETE` | `/api/bugs/:id` | Bearer (admin) | Eliminar bug |
+
+### Comentarios
+
+| Método | Ruta | Auth | Descripción |
+|--------|------|------|-------------|
+| `PUT` | `/api/comments` | Bearer | Editar comentario (autor o admin). Body: `{ bugId, commentId, text }` |
+
+### Usuarios
+
+| Método | Ruta | Auth | Descripción |
+|--------|------|------|-------------|
+| `GET` | `/api/users` | Bearer | Listar usuarios (para asignación) |
+| `PATCH` | `/api/users/:id` | Bearer (propio) | Actualizar preferencias (notifications) |
+
+### Sistema
+
+| Método | Ruta | Auth | Descripción |
+|--------|------|------|-------------|
+| `GET` | `/api/health` | No | Health check del servidor |
+
+### Formato de autenticación
+
+```
+Authorization: Bearer <token>
+```
+
+El token tiene formato: `userId|expiryTimestamp|hmacSignature` y expira en 24 horas.
+
+---
+
+## 7. Sistema de Notificaciones
+
+### Arquitectura
+
+```
+Petición PUT /api/bugs/:id
+         │
+         ▼
+   Guardar bug en store.json
+         │
+         ▼
+   sendNotificationEmail(bugId, oldBug, updatedBug)
+         │
+         ├── 1. Comparar oldBug vs updatedBug
+         │      (status, priority, assignedTo, title, comments)
+         │
+         ├── 2. Construir lista de destinatarios:
+         │      • Creador del bug
+         │      • Usuario asignado (si cambió)
+         │      • Admin (siempre)
+         │      • Respetar preferencia notifications=false
+         │
+         ├── 3. Construir email HTML
+         │      (tabla de cambios, diseño responsive)
+         │
+         └── 4. Enviar vía Nodemailer + SMTP Hostinger
+                (asíncrono, no bloquea respuesta HTTP)
+```
+
+### Reglas de notificación
+
+- **Cambio de estado:** notifica a creador + asignado + admin
+- **Cambio de prioridad:** notifica a creador + asignado + admin
+- **Cambio de asignación:** notifica a creador + nuevo asignado + admin
+- **Nuevo comentario:** notifica a creador + asignado (no al autor del comentario) + admin
+- **Tarea sin asignar:** notifica a creador + admin
+- **Usuario con `notifications: false`:** no recibe notificaciones (pero el admin sí)
+
+### Preferencias de usuario
+
+Cada usuario puede activar/desactivar notificaciones desde el panel de perfil (checkbox). El cambio se persiste inmediatamente vía `PATCH /api/users/:id`.
+
+---
+
+## 8. Sistema de Permisos
 
 ### Roles
-| Rol | Permisos |
-|---|---|
-| **admin** | Todo: crear/editar/borrar listas y bugs, gestionar usuarios, backup/restore, cambiar el nombre del creador original de una tarea |
-| **user** | Crear/editar bugs, añadir comentarios, marcar como resuelto (autoría asignada automáticamente, no modificable) |
 
-### Pantallas de auth (en BugTracker.html)
-- **Login** → `#login-form` (visible por defecto)
-- **Registro** → `#register-form` (oculto, toggle con enlace)
-- **Super Usuario** → `#superuser-form` (solo si no hay usuarios)
+| Rol | Descripción | Permisos especiales |
+|-----|-------------|---------------------|
+| `admin` | Administrador del sistema | Eliminar bugs, editar cualquier comentario, ver todos los bugs |
+| `user` | Usuario estándar | Crear bugs, asignar bugs, comentar, editar solo sus comentarios |
 
-> [!WARNING]
-> Los enlaces de toggle entre login/registro deben estar **dentro** de sus respectivos formularios pero con `onclick` inline que muestra/oculta ambos formularios. No usar `href="#"` (causa submit accidental).
+### Reglas de autorización
 
-### Código clave (app.js)
-```javascript
-const Auth = {
-    _users: [],
-    _current: null,
-    
-    load() {
-        // Prioridad: datos inyectados del servidor > localStorage
-        if (window.__SERVER_DATA__?.users) {
-            this._users = window.__SERVER_DATA__.users;
-        } else {
-            this._users = JSON.parse(localStorage.getItem('bugtracker_users') || '[]');
-        }
-    },
-    
-    login(username, password) {
-        const encoded = btoa(password);
-        return this._users.find(u => u.username === username && u.password === encoded);
-    }
-};
+| Acción | admin | user (autor) | user (otro) |
+|--------|-------|--------------|-------------|
+| Crear bug | ✅ | ✅ | ✅ |
+| Editar bug | ✅ | ✅ (si asignado) | ❌ |
+| Eliminar bug | ✅ | ❌ | ❌ |
+| Editar comentario | ✅ | ✅ | ❌ |
+| Cambiar preferencias | ✅ | ✅ (solo propias) | ❌ |
+
+### Implementación
+
+La autorización se implementa en cada endpoint verificando:
+1. `authenticate(req, res)` → extrae y valida token → obtiene userId y role
+2. Lógica específica del endpoint: compara `userId` del token con `createdBy`/`assignedTo`/`userId` del comentario
+
+---
+
+## 9. Estructura de Archivos del Proyecto
+
+```
+bug-tracker/
+├── server.js              # Backend: servidor HTTP, API REST, notificaciones (736 líneas)
+├── app.js                 # Frontend: SPA vanilla JS (~1900 líneas)
+├── BugTracker.html        # Página principal (entry point)
+├── styles.css             # Estilos con tema oscuro
+├── data/
+│   ├── store.json         # Datos de la aplicación (bugs, comentarios)
+│   └── users.json         # Usuarios con hashes PBKDF2
+├── node_modules/          # Solo Nodemailer (única dependencia externa)
+├── package.json           # Configuración npm
+├── package-lock.json      # Lock de dependencias
+└── DOCUMENTACION.md       # Este archivo
 ```
 
----
+### Métricas de código
 
-## 5. API del Servidor
-
-### Endpoints REST
-
-| Método | Ruta | Descripción |
-|---|---|---|
-| `GET` | `/api/users` | Obtener todos los usuarios |
-| `POST` | `/api/users` | Guardar array de usuarios |
-| `GET` | `/api/store` | Obtener datos de la app |
-| `POST` | `/api/store` | Guardar datos de la app |
-| `GET` | `/api/backup` | Descargar backup completo |
-| `POST` | `/api/restore` | Restaurar desde backup |
-
-### Archivos estáticos
-- `GET /` → sirve `BugTracker.html`
-- Cualquier otro path → busca el archivo en el directorio del proyecto
-
-### Seguridad
-- Validación de path para prevenir directory traversal
-- CORS habilitado para desarrollo (`Access-Control-Allow-Origin: *`)
-- Headers `Cache-Control: no-cache` para evitar versiones cacheadas
+| Archivo | Líneas | Responsabilidad |
+|---------|--------|-----------------|
+| `server.js` | 736 | Backend completo |
+| `app.js` | ~1900 | Frontend completo |
+| `styles.css` | ~500 | Estilos y tema oscuro |
+| `BugTracker.html` | ~100 | Estructura HTML base |
 
 ---
+
+## 10. Guía de Desarrollo: Cómo NO Repetir los Errores
+
+### 🏗️ Antes de implementar una feature nueva
+
+1. **Migraciones de datos:**
+   - Si cambias el formato de almacenamiento, escribe un script de migración
+   - Haz backup de `data/` antes de ejecutar la migración
+   - Verifica integridad post-migración
+
+2. **Servicios externos (APIs, SMTP):**
+   - Lee los límites del plan gratuito antes de escribir código
+   - Verifica que el servicio soporta tu caso de uso (multiusuario, volumen, etc.)
+   - Prueba con un script mínimo antes de integrar
+
+3. **Cambios en archivos grandes (>500 líneas):**
+   - ❌ No usar `sed`, `awk` o heredocs para editar remotamente
+   - ✅ Usar scripts Python con verificación de integridad post-parche
+   - ✅ Hacer backup: `cp archivo.js archivo.js.bak.$(date +%s)`
+   - ✅ Verificar `wc -l` antes y después
+
+### 🐛 Durante el desarrollo
+
+4. **Variables y scope:**
+   - Declarar dependencias de datos al inicio de la función
+   - No usar variables en logs fuera de su scope
+   - Si una variable se necesita en múltiples ramas, declararla en el scope padre
+
+5. **Logs de diagnóstico:**
+   - Poner logs DENTRO del bloque donde las variables existen
+   - No asumir que un `ReferenceError` será visible — en callbacks asíncronos puede ser devorado
+
+6. **Normalización de datos:**
+   - Después de `JSON.parse`, normalizar escapes (`\\n` → `\n`)
+   - Antes de convertir a HTML, asegurarse de que los saltos de línea son reales
+
+### 🚀 Antes de commit
+
+7. **Verificación de integridad:**
+   ```bash
+   git diff --stat          # ¿Qué archivos cambiaron y cuánto?
+   wc -l app.js server.js   # ¿Tamaños esperados?
+   ```
+
+8. **Funciones críticas:**
+   - Verificar que `openBugModal`, `escapeHtml`, `generateReport` y otras funciones clave existen en `app.js`
+   - Verificar que `sendNotificationEmail`, `authenticate`, `verifyToken` existen en `server.js`
+
+### 🔄 Recuperación de desastres
+
+9. **Si algo se rompe:**
+   ```bash
+   git status                    # Ver qué pasó
+   git diff                      # Ver cambios exactos
+   git checkout -- archivo.js    # Restaurar desde último commit bueno
+   wc -l archivo.js              # Verificar que no está vacío
+   ```
+
+10. **Fuente de verdad:**
+    - Git es la fuente de verdad, pero verificar que el repositorio no esté corrupto
+    - Si `git checkout` produce archivo vacío, probar commit anterior
+
+---
+
+## 11. Glosario de Decisiones Técnicas
+
+| Decisión | Justificación | Trade-off |
+|----------|---------------|-----------|
+| **Zero Dependencies** | Seguridad (sin supply chain attacks), simplicidad de despliegue | Más código propio que mantener |
+| **Nodemailer como excepción** | Implementar SMTP desde cero es inviable y peligroso | Rompe la regla zero-dep pero es la dependencia más usada y auditada para email |
+| **PBKDF2 sobre bcrypt** | `crypto.pbkdf2` es nativo de Node.js (no requiere C++ bindings como bcrypt) | Ligeramente menos resistente a GPU attacks que bcrypt/scrypt, pero suficiente con 210k iteraciones |
+| **SHA-512 sobre SHA-256** | Mayor seguridad contra colisiones para hashing de contraseñas | Más lento (~2x) pero aceptable para operación de login |
+| **JSON sobre SQLite** | Sin dependencias nativas, legible por humanos, fácil de hacer backup | Sin concurrencia real, no escala a muchos datos |
+| **Vanilla JS sobre React/Vue** | Coherencia con zero-dependencies, sin build step | Más verboso, sin componentes reutilizables |
+| **Tema oscuro por defecto** | Mejor para uso prolongado (herramienta de desarrollo) | Requiere diseño cuidadoso de contraste |
+| **Tokens JWT-like propios sobre JWT estándar** | Sin dependencia `jsonwebtoken`, control total del formato | No interoperable con otros sistemas, menos auditado |
+| **Hostinger SMTP** | Dominio propio con reputación limpia, SPF/DKIM incluido | Coste mensual de hosting (~$2-5/mes) |
+| **Puerto 465 (SSL implícito)** | Más seguro que STARTTLS (sin posibilidad de downgrade attack) | Menos común que 587, algunos firewalls lo bloquean |
+
+---
+
+
+
+---
+
+## 📎 Apéndice: Documentación Original del Proyecto Base
+
+_Las siguientes secciones provienen de la documentación original del proyecto y cubren funcionalidades base que no han cambiado._
 
 ## 6. Inyección de Datos (SSR Lite)
 
@@ -247,6 +1291,8 @@ if (window.__SERVER_DATA__?.users) {
 
 > [!TIP]
 > Esta técnica elimina la dependencia de `fetch` asíncrono al inicio. Es crítica para conexiones con latencia alta (VPN, Tailscale, redes móviles).
+
+---
 
 ---
 
@@ -324,6 +1370,8 @@ const ThemeManager = {
 
 ---
 
+---
+
 ## 8. Diseño Responsive y Mobile
 
 ### Breakpoints
@@ -395,6 +1443,8 @@ function closeSidebar() {
 
 ---
 
+---
+
 ## 9. Sistema de Backup/Restore
 
 ### Backup (descarga)
@@ -431,6 +1481,8 @@ input.onchange = async (e) => {
 };
 input.click();
 ```
+
+---
 
 ---
 
@@ -487,6 +1539,8 @@ server {
 
 ---
 
+---
+
 ## 11. Acceso Remoto
 
 ### Opciones de acceso
@@ -515,65 +1569,6 @@ tailscale funnel --bg 3000
 > Tailscale Funnel proporciona HTTPS automático. No requiere certificados ni configuración DNS.
 
 ---
-
-## 12. Lecciones Aprendidas
-
-### 🔴 Errores Críticos y Sus Soluciones
-
-#### 1. Login fallaba por red lenta (VPN/Tailscale)
-- **Causa:** `fetch('/api/users')` hacía timeout antes de cargar los usuarios
-- **Solución:** Inyectar datos en el HTML desde el servidor (`window.__SERVER_DATA__`)
-- **Lección:** Para apps con acceso remoto, nunca depender de fetch asíncrono para el dato inicial
-
-#### 2. Botones no funcionaban en móvil
-- **Causa:** Los botones se mostraban con `:hover` que no existe en touch screens
-- **Solución:** `opacity: 1 !important` en media query `≤640px`
-- **Lección:** Nunca usar `:hover` como único mecanismo de mostrar/ocultar
-
-#### 3. Sidebar no respondía a toques en móvil
-- **Causa:** El backdrop (`inset: 0`) cubría toda la pantalla, interceptando toques
-- **Solución:** Backdrop empieza en `left: 280px`, no cubre el área del sidebar
-- **Lección:** Los overlays transparentes interceptan eventos aunque no se vean
-
-#### 4. Sidebar tapada por el header en móvil
-- **Causa:** `top: 0` hacía que el contenido empezara detrás del header sticky
-- **Solución:** `padding-top: 120px` en la sidebar móvil
-- **Lección:** Los elementos fixed no respetan el espacio de elementos sticky
-
-#### 5. Scroll del fondo al hacer scroll en sidebar
-- **Causa:** El body seguía scrolleable cuando el sidebar estaba abierto
-- **Solución:** `body.sidebar-open { overflow: hidden; }`
-- **Lección:** Siempre bloquear scroll del fondo en overlays móviles
-
-#### 6. Temas no se aplicaban a todos los elementos
-- **Causa:** Colores hardcodeados como `rgba(18,18,26,0.6)` no usan variables CSS
-- **Solución:** Reemplazar todos los colores hardcodeados por `var(--nombre)`
-- **Lección:** Establecer variables CSS desde el inicio y NO usar colores directos
-
-#### 7. Caché del móvil servía versiones antiguas
-- **Causa:** Sin headers de cache-control, el navegador cacheaba los archivos
-- **Solución:** `Cache-Control: no-cache, no-store, must-revalidate` en las respuestas
-- **Lección:** En desarrollo, siempre desactivar caché del servidor
-
-#### 8. Modal de confirmación aparecía detrás del panel admin
-- **Causa:** Ambos modales tenían el mismo `z-index: 1000`
-- **Solución:** `#modal-confirm { z-index: 1500; }`
-- **Lección:** Los modales de confirmación siempre deben tener z-index mayor
-
-#### 9. Enlaces de registro hacían submit del formulario
-- **Causa:** `<a href="#">` dentro de `<form>` era interceptado por el navegador
-- **Solución:** `href="javascript:void(0)"` con `onclick` inline
-- **Lección:** Nunca poner enlaces interactivos dentro de `<form>` sin prevenir submit
-
-#### 10. Cabecera móvil se apilaba (logo encima de botones)
-- **Causa:** El ancho sumado de logo + botones superaba el viewport (ej. 320px), haciendo que `flex-wrap` saltara de línea.
-- **Solución:** Micro-spacing (`gap: 0.3rem`, padding reducido, fuente menor) y `flex-wrap: nowrap` en los bloques internos.
-- **Lección:** En headers móviles con `justify-content: space-between`, vigila milimétricamente la suma de anchos.
-
-#### 11. Interfaz sobrecargada de buscadores
-- **Causa:** Un buscador general en la cabecera y otro local dentro de las listas ocupaban espacio redundante.
-- **Solución:** Unificar en una barra de búsqueda "inteligente" en el header que cambia de placeholder y modo (global/local) dependiendo del contexto.
-- **Lección:** Minimizar controles duplicados en pantalla; reutilizar inputs modificando su contexto y placeholder en JS.
 
 ---
 
@@ -666,6 +1661,8 @@ Si quieres recrear este proyecto desde cero con un agente IA, usa estos prompts 
 
 ---
 
+---
+
 ## Apéndice: Credenciales
 
 | Entorno | Usuario | Contraseña |
@@ -692,3 +1689,14 @@ Red local:      http://192.168.1.115:3000
 Tailscale:      http://ertceps:8082
 Funnel (HTTPS): https://ertceps.tail51f3b0.ts.net
 ```
+
+## 📝 Notas Finales
+
+Este documento es un registro vivo de la evolución del proyecto Bug Tracker. Cada error encontrado y cada lección aprendida se documenta aquí para que el equipo (y el yo del futuro) no tropiecen dos veces con la misma piedra.
+
+**Principio rector del proyecto:**
+> *"El software no es solo código funcionando — es el conocimiento acumulado de por qué funciona de esa manera y no de otra."*
+
+---
+
+*Documento mantenido por el equipo de desarrollo de Bug Tracker. Última actualización: 16 de mayo de 2026.*

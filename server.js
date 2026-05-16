@@ -170,7 +170,7 @@ async function sendEmail(to, subject, text, attachmentStr, html) {
 
 const server = http.createServer(async (req, res) => {
     res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
     if (req.method === 'OPTIONS') { res.writeHead(204); res.end(); return; }
 
@@ -313,6 +313,50 @@ const server = http.createServer(async (req, res) => {
         return;
     }
 
+    // PATCH /api/users/:id/role — Change user role (admin only)
+    if (pathname.startsWith('/api/users/') && pathname.endsWith('/role') && req.method === 'PATCH') {
+        const session = requireAuth(req);
+        if (!session) {
+            res.writeHead(401, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ error: 'No autorizado' }));
+            return;
+        }
+        const userId = pathname.split('/')[3];
+        const users = readJSON(USERS_FILE) || [];
+        const currentUser = users.find(u => u.id === session.userId);
+        if (!currentUser || currentUser.role !== 'admin') {
+            res.writeHead(403, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ error: 'Solo el admin puede cambiar roles' }));
+            return;
+        }
+        const { role } = await parseBody(req);
+        if (!['manager', 'user'].includes(role)) {
+            res.writeHead(400, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ error: 'Rol inválido. Debe ser "manager" o "user"' }));
+            return;
+        }
+        const target = users.find(u => u.id === userId);
+        if (!target) {
+            res.writeHead(404, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ error: 'Usuario no encontrado' }));
+            return;
+        }
+        if (target.role === 'admin') {
+            res.writeHead(403, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ error: 'No se puede cambiar el rol de un admin' }));
+            return;
+        }
+        target.role = role;
+        writeJSON(USERS_FILE, users);
+        // Update session role if targeting the same user
+        if (target.id === session.userId) {
+            session.role = role;
+        }
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ ok: true }));
+        return;
+    }
+
     // GET /api/store
     if (pathname === '/api/store' && req.method === 'GET') {
         const data = readJSON(STORE_FILE) || { versions: [], activeVersionId: null, activeListId: null };
@@ -355,8 +399,8 @@ const server = http.createServer(async (req, res) => {
                     });
                 });
                 console.log('[Notify] New lists:', newLists.length);
-                                console.log('[Notify] Indexing old bugs...');
-                
+                console.log('[Notify] Indexing old bugs...');
+
                 // Index old bugs with their list/version names
                 oldStore.versions.forEach(v => {
                     v.lists.forEach(l => {
@@ -367,7 +411,7 @@ const server = http.createServer(async (req, res) => {
                         });
                     });
                 });
-                
+
                 // Index new bugs with their list/version names
                 data.versions.forEach(v => {
                     v.lists.forEach(l => {
@@ -379,7 +423,7 @@ const server = http.createServer(async (req, res) => {
                         });
                     });
                 });
-                
+
                 // Find new and modified bugs
                 const changed = [];
                 for (const [key, newEntry] of Object.entries(newBugs)) {
@@ -416,20 +460,20 @@ const server = http.createServer(async (req, res) => {
                         }
                     }
                 }
-                
+
                 // Also notify about new lists
                 if (newLists.length > 0) {
                     const su = (readJSON(USERS_FILE) || []).find(u => u.role === 'admin' && u.email && u.email.trim());
                     if (su && su.id !== session.userId) {
                         newLists.forEach(l => {
-                            changed.push({ 
-                                type: 'new_list', 
+                            changed.push({
+                                type: 'new_list',
                                 entry: { bug: { title: l.name + ' (' + l.bugCount + ' tareas)', description: '', priority: '', status: '', assignee: '', createdBy: session.username, comments: [] }, listName: l.name }
                             });
                         });
                     }
                 }
-                
+
                 // Send notifications if there are changes
                 console.log('[Notify] Cambios detectados:', changed.length);
                 if (changed.length > 0) {
@@ -438,7 +482,7 @@ const server = http.createServer(async (req, res) => {
                     const authorName = session.username.charAt(0).toUpperCase() + session.username.slice(1);
                     const priorityLabels = { low: 'Baja', medium: 'Media', high: 'Alta', critical: 'Crítica' };
                     const statusLabels = { 'new': 'Nuevo', 'in-progress': 'En curso', 'passed': 'Pasado', 'failed': 'Fallido' };
-                    
+
                     // Build change descriptions (3 formats: new, updated, comment-only)
                     const changeDescriptions = changed.map(c => {
                         const bug = c.entry.bug;
@@ -448,36 +492,36 @@ const server = http.createServer(async (req, res) => {
                         const status = statusLabels[bug.status] || bug.status || '—';
                         const desc = bug.description || '';
                         const createdBy = bug.createdBy || '';
-                        
+
                         // Extract new comments if any
                         let newCommentText = '';
                         const oldC = (c.oldBug && c.oldBug.comments) || [];
                         const newC = bug.comments || [];
                         if (newC.length > oldC.length) {
                             const added = newC.slice(oldC.length);
-                            newCommentText = added.map(cm => '      \ud83d\udcac ' + (cm.author || 'An\u00f3nimo') + ': ' + (cm.text || '').slice(0, 120)).join('\\n');
+                            newCommentText = added.map(cm => '      \ud83d\udcac ' + (cm.author || 'An\ufffdnimo') + ': ' + (cm.text || '').slice(0, 120)).join('\\n');
                         }
-                        
+
                         // TYPE 1: New task - show ALL details including description and comments
                         if (c.type === 'new_list') {
                             return 'New list: ' + bug.title + ' - Created by ' + (bug.createdBy || '');
                         }
-                        
+
                         if (c.type === 'new') {
                             let msg = '\ud83d\udd06 Nueva tarea: ' + bug.title + '\\n' +
                                 '   \ud83d\udccb Lista: ' + listName + '\\n';
-                            if (desc) msg += '   \ud83d\udcdd Descripci\u00f3n: ' + desc.slice(0, 200) + '\\n';
+                            if (desc) msg += '   \ud83d\udcdd Descripci\ufffdn: ' + desc.slice(0, 200) + '\\n';
                             msg += '   \ud83d\udd34 Prioridad: ' + priority + '\\n' +
                                 '   \ud83d\udc64 Asignada a: ' + assignee + '\\n' +
                                 '   \ud83d\udccc Estado: ' + status + '\\n' +
                                 '   \u270f\ufe0f Creada por: ' + createdBy;
                             if (newC.length > 0) {
                                 msg += '\\n   \ud83d\udcac Comentarios iniciales (' + newC.length + '):\\n' +
-                                    newC.map(cm => '      ' + (cm.author || 'An\u00f3nimo') + ': ' + (cm.text || '').slice(0, 120)).join('\\n');
+                                    newC.map(cm => '      ' + (cm.author || 'An\ufffdnimo') + ': ' + (cm.text || '').slice(0, 120)).join('\\n');
                             }
                             return msg;
                         }
-                        
+
                         // TYPE 2: Comment only change
                         const nonCommentFields = (c.fields || []).filter(f => f !== 'comentarios');
                         if (nonCommentFields.length === 0 && newCommentText) {
@@ -485,7 +529,7 @@ const server = http.createServer(async (req, res) => {
                                 '   \ud83d\udccb Lista: ' + listName + '\\n' +
                                 newCommentText;
                         }
-                        
+
                         // TYPE 3: Other updates (fields changed, with or without comments)
                         let msg = '\u270f\ufe0f Tarea actualizada: ' + bug.title + '\\n' +
                             '   \ud83d\udccb Lista: ' + listName + '\\n' +
@@ -497,38 +541,60 @@ const server = http.createServer(async (req, res) => {
                         }
                         return msg;
                     }).join('\\n\\n');
-                    
-                    const text = authorName + ' ha realizado ' + changed.length + ' cambio(s):\\n\\n' + 
-                        changeDescriptions + '\\n\\n🔗 Revisa en: https://bugtracker.tail51f3b0.ts.net';
+
+                    const text = authorName + ' ha realizado ' + changed.length + ' cambio(s):\\n\\n' +
+                        changeDescriptions + '\\n\\n\ud83d\udd17 Revisa en: https://bugtracker.tail51f3b0.ts.net';
                     const html = toHtml(text);
-                    
-                    // Collect recipients: subscribers + assignees
+
+                    // Collect recipients: super user + subscribers + assignees + managers + followers
                     const recipients = new Map(); // email -> user object
-                    
+
                     // Super user ALWAYS gets notifications
                     const superUser = users.find(u => u.role === 'admin' && u.email && u.email.trim());
                     if (superUser && superUser.id !== session.userId) {
                         recipients.set(superUser.email, superUser);
                     }
-                    
+
                     // Subscribers (users who opted in)
                     users.forEach(u => {
                         if (u.notifications !== false && u.email && u.email.trim() && u.id !== session.userId) {
                             recipients.set(u.email, u);
                         }
                     });
-                    
+
                     // Direct assignees (notify on any change to their tasks)
                     changed.forEach(c => {
                         const assignee = c.entry.bug.assignee;
                         if (assignee) {
-                            const user = users.find(u => 
+                            const user = users.find(u =>
                                 u.name === assignee && u.email && u.email.trim() && u.id !== session.userId
                             );
                             if (user) recipients.set(user.email, user);
                         }
                     });
-                    
+
+                    // === NEW: Managers — reciben notificaciones de CUALQUIER cambio (como el admin) ===
+                    const managers = users.filter(u => u.role === 'manager' && u.email && u.email.trim() && u.id !== session.userId);
+                    managers.forEach(m => recipients.set(m.email, m));
+
+                    // === NEW: Followers — reciben notificaciones de cualquier cambio en ESA tarea ===
+                    changed.forEach(c => {
+                        const bug = c.type === 'new_list' ? null : c.entry?.bug;
+                        if (bug && bug.followers && bug.followers.length > 0) {
+                            bug.followers.forEach(followerUsername => {
+                                const follower = users.find(u => u.username === followerUsername && u.email && u.email.trim() && u.id !== session.userId);
+                                if (follower) recipients.set(follower.email, follower);
+                            });
+                        }
+                        // Also check oldBug followers (for updated tasks)
+                        if (c.oldBug && c.oldBug.followers && c.oldBug.followers.length > 0) {
+                            c.oldBug.followers.forEach(followerUsername => {
+                                const follower = users.find(u => u.username === followerUsername && u.email && u.email.trim() && u.id !== session.userId);
+                                if (follower) recipients.set(follower.email, follower);
+                            });
+                        }
+                    });
+
                     let sentCount = 0;
                     for (const [email, user] of recipients) {
                         try {
@@ -547,9 +613,71 @@ const server = http.createServer(async (req, res) => {
             } else {
                 console.log('[Notify] Skipping - oldStore:', !!oldStore, 'data.versions:', !!(data && data.versions), 'isArray:', !!(oldStore && Array.isArray(oldStore.versions)));
             }
-            
+
             res.writeHead(200, { 'Content-Type': 'application/json' });
             res.end(JSON.stringify({ ok: true }));
+        } catch (e) {
+            res.writeHead(400, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ error: e.message }));
+        }
+        return;
+    }
+
+    // POST /api/bugs/:bugId/followers — Add/remove/toggle followers
+    if (pathname.startsWith('/api/bugs/') && pathname.endsWith('/followers') && req.method === 'POST') {
+        const session = requireAuth(req);
+        if (!session) {
+            res.writeHead(401, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ error: 'No autorizado' }));
+            return;
+        }
+        try {
+            const bugId = pathname.split('/')[3];
+            const { action, username } = await parseBody(req);
+
+            // Find the bug in store.json
+            const store = readJSON(STORE_FILE);
+            if (!store || !store.versions) {
+                res.writeHead(404, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ error: 'Bug no encontrado' }));
+                return;
+            }
+            let bug = null;
+            for (const v of store.versions) {
+                for (const l of v.lists) {
+                    bug = l.bugs.find(b => b.id === bugId);
+                    if (bug) break;
+                }
+                if (bug) break;
+            }
+            if (!bug) {
+                res.writeHead(404, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ error: 'Bug no encontrado' }));
+                return;
+            }
+
+            if (!bug.followers) bug.followers = [];
+
+            const targetUser = (username || session.username).toLowerCase();
+            const users = readJSON(USERS_FILE) || [];
+            const targetUserObj = users.find(u => u.username.toLowerCase() === targetUser.toLowerCase());
+            if (!targetUserObj) {
+                res.writeHead(400, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ error: 'El usuario "' + targetUser + '" no existe' }));
+                return;
+            }
+
+            if (action === 'add' || (!action && !bug.followers.includes(targetUser))) {
+                if (!bug.followers.includes(targetUser)) {
+                    bug.followers.push(targetUser);
+                }
+            } else if (action === 'remove' || (!action && bug.followers.includes(targetUser))) {
+                bug.followers = bug.followers.filter(f => f !== targetUser);
+            }
+
+            writeJSON(STORE_FILE, store);
+            res.writeHead(200, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ ok: true, followers: bug.followers }));
         } catch (e) {
             res.writeHead(400, { 'Content-Type': 'application/json' });
             res.end(JSON.stringify({ error: e.message }));
@@ -587,7 +715,7 @@ const server = http.createServer(async (req, res) => {
                 res.end(JSON.stringify({ error: 'Credenciales SMTP no configuradas en el servidor' }));
                 return;
             }
-            const backupHtml = toHtml('Adjunto encontrarás tu backup de Bug Tracker.\\n\\n📅 Fecha: ' + new Date().toLocaleString() + '\\n🔗 Accede a la app: https://bugtracker.tail51f3b0.ts.net');
+            const backupHtml = toHtml('Adjunto encontrarás tu backup de Bug Tracker.\\n\\n\ud83d\udcc5 Fecha: ' + new Date().toLocaleString() + '\\n\ud83d\udd17 Accede a la app: https://bugtracker.tail51f3b0.ts.net');
             await sendEmail(user.email, 'Backup Bug Tracker', 'Adjunto encontrarás tu backup de Bug Tracker.', backupStr, backupHtml);
             res.writeHead(200, { 'Content-Type': 'application/json' });
             res.end(JSON.stringify({ ok: true, message: 'Backup enviado correctamente a ' + user.email }));
@@ -620,6 +748,75 @@ const server = http.createServer(async (req, res) => {
             }
             writeJSON(STORE_FILE, data.store);
             writeJSON(USERS_FILE, data.users);
+            res.writeHead(200, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ ok: true }));
+        } catch (e) {
+            res.writeHead(400, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ error: e.message }));
+        }
+        return;
+    }
+
+    // PUT /api/comments — Edit comment (author or admin only; managers CANNOT edit others' comments)
+    if (pathname === '/api/comments' && req.method === 'PUT') {
+        const session = requireAuth(req);
+        if (!session) {
+            res.writeHead(401, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ error: 'No autorizado' }));
+            return;
+        }
+        try {
+            const { bugId, commentId, text } = await parseBody(req);
+            if (!bugId || !commentId || !text || !text.trim()) {
+                res.writeHead(400, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ error: 'Faltan campos requeridos' }));
+                return;
+            }
+            const store = readJSON(STORE_FILE);
+            if (!store || !store.versions) {
+                res.writeHead(404, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ error: 'Bug no encontrado' }));
+                return;
+            }
+            // Find the comment
+            let found = false;
+            for (const v of store.versions) {
+                for (const l of v.lists) {
+                    for (const b of l.bugs) {
+                        if (b.id === bugId) {
+                            const comment = (b.comments || []).find(c => c.id === commentId);
+                            if (!comment) {
+                                res.writeHead(404, { 'Content-Type': 'application/json' });
+                                res.end(JSON.stringify({ error: 'Comentario no encontrado' }));
+                                return;
+                            }
+                            // Check permissions: author or admin ONLY (managers cannot edit others' comments)
+                            const users = readJSON(USERS_FILE) || [];
+                            const currentUser = users.find(u => u.id === session.userId);
+                            const isAdmin = currentUser && currentUser.role === 'admin';
+                            const isAuthor = comment.authorUser === session.username;
+                            if (!isAuthor && !isAdmin) {
+                                res.writeHead(403, { 'Content-Type': 'application/json' });
+                                res.end(JSON.stringify({ error: 'Solo el autor o el admin pueden editar este comentario' }));
+                                return;
+                            }
+                            comment.text = text.trim();
+                            comment.editedAt = Date.now();
+                            comment.editedBy = session.username;
+                            found = true;
+                            break;
+                        }
+                    }
+                    if (found) break;
+                }
+                if (found) break;
+            }
+            if (!found) {
+                res.writeHead(404, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ error: 'Bug no encontrado' }));
+                return;
+            }
+            writeJSON(STORE_FILE, store);
             res.writeHead(200, { 'Content-Type': 'application/json' });
             res.end(JSON.stringify({ ok: true }));
         } catch (e) {

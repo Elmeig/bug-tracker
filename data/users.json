@@ -6,6 +6,7 @@
     "role": "admin",
     "createdAt": 1778928473670,
     "email": "mehdi@remvt.com",
+    "notifications": true,
     "passwordHash": "fc268aceb6ecfcf253f6dc806add32ecf10a0aa03b3e325d997258777e2202b7:c69e19997864c2a0037ba17b992d0c7c8cf05b6d16c72d25078715f7539a8827397cd680dc7125963a4a2fb0e090bf9efb308ee0739a0eb4c8fbe0dbc7c8042f"
   },
   {
@@ -15,6 +16,47 @@
     "role": "user",
     "createdAt": 1778928525717,
     "email": "mehdi@remvt.com",
+    "notifications": true,
     "passwordHash": "daadfe80801e50e9a7179e20ad0f14afdea5e36fedef8449756cc76a616a4781:ef69afa5e2cedc4cce4697a3d388940a081edb8449d455fb56eedd416d2ba19ed7cf1e65fcf2fa8c907aa0d2ff73407402a33d31e28d30011b99a7bb53978503"
+  },
+  {
+    "id": "cd8b1c85-ecbe-421f-9ce0-9424df6accd6",
+    "name": "Test",
+    "username": "test",
+    "role": "user",
+    "createdAt": 1778961527346,
+    "email": "",
+    "notifications": false,
+    "passwordHash": "b458123ed566e21fba8d285d47368f718b9086969cc891af2f2b64eb81ad86c9:92e9db01ac146e47c60be304500da8e0b1b1be82c88462463c71a2e161c3d9649825571ce67a8980a4efdb5a59d6360430746e78a0960a55c6ea8cf8aa1ff29b"
+  },
+  {
+    "id": "aaf40d5e-5e55-4d7d-a6c7-8510529b16a6",
+    "name": "Youpi",
+    "username": "user2",
+    "role": "manager",
+    "createdAt": 1778962861596,
+    "email": "",
+    "notifications": false,
+    "passwordHash": "ec2722f6c6a6d605428953d9cade7a5b21bc3da26808c9ef71544a4d5e91a408:b1ec2d7cb22f71e841bdaa8df8247a43ab536ed836d410b805570a9c6becd50517e03e73e86b914243207c570d4e3355e70b827defbba75fdfadd6d1fc80b35c"
+  },
+  {
+    "id": "aa7cbc82-3949-471a-961e-d6c76dc19f00",
+    "name": "Man",
+    "username": "manager",
+    "role": "manager",
+    "createdAt": 1778966985679,
+    "email": "madiwin69@gmail.com",
+    "notifications": false,
+    "passwordHash": "f50137dcd41c9ad850cefef078523edc7ed7cf1e26f56721b705518943b10d9c:4be7f359af9dba4c80077ca1ecd69cb8e0b033db002951170b4d76f8df12acae99b3e6a0c6da878786664f2b22ced323b6b16d0ba4d8c6f35bb1eb30cfbc8f3c"
+  },
+  {
+    "id": "c40c3b08-7f3f-4f0c-b8e8-a57be1142ced",
+    "name": "Kimi",
+    "username": "kimi",
+    "role": "user",
+    "createdAt": 1778967264032,
+    "email": "didofrido123@gmail.com",
+    "notifications": false,
+    "passwordHash": "faa1773c110770616196f8861ffc50036320f51cb139b1ea0b530c4b65caf392:58fecda02c4e4532d65f948c773bbc8db746eaf3bf17dde35a9ff68b77e3884c5f3b847c0601f594daa588751bcf01fbf4e8753713763b07b045eb59da35cc0e"
   }
 ]
