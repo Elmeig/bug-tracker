@@ -1,0 +1,671 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="description" content="Bug Tracker - Gestión de tareas de testeo para aplicaciones">
+    <title>Bug Tracker | Test Management</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="styles.css?v=2.5">
+</head>
+<body>
+    <!-- Ambient background -->
+    <div class=" ambient-bg">
+    <div class="orb orb-1"></div>
+    <div class="orb orb-2"></div>
+    <div class="orb orb-3"></div>
+    </div>
+
+    <!-- Auth Screen -->
+    <div class="auth-screen" id="auth-screen">
+        <div class="auth-card">
+            <div class="auth-logo">
+                <svg width="48" height="48" viewBox="0 0 32 32" fill="none">
+                    <rect width="32" height="32" rx="8" fill="url(#logo-grad-auth)" />
+                    <path d="M10 16L14 20L22 12" stroke="white" stroke-width="2.5" stroke-linecap="round"
+                        stroke-linejoin="round" />
+                    <defs>
+                        <linearGradient id="logo-grad-auth" x1="0" y1="0" x2="32" y2="32">
+                            <stop stop-color="#6366f1" />
+                            <stop offset="1" stop-color="#8b5cf6" />
+                        </linearGradient>
+                    </defs>
+                </svg>
+                <h1>Bug Tracker</h1>
+                <p class="auth-subtitle">Gestión de tareas de testeo</p>
+            </div>
+
+            <!-- Login Form -->
+            <form class="auth-form" id="login-form">
+                <h2>Iniciar Sesión</h2>
+                <div class="form-group">
+                    <label for="login-username">Usuario</label>
+                    <input type="text" id="login-username" placeholder="Tu nombre de usuario" autocomplete="username"
+                        required>
+                </div>
+                <div class="form-group">
+                    <label for="login-password">Contraseña</label>
+                    <input type="password" id="login-password" placeholder="Tu contraseña"
+                        autocomplete="current-password" required>
+                </div>
+                <div class="auth-error" id="login-error"></div>
+                <button type="submit" class="btn-primary auth-btn">Entrar</button>
+                <p class="auth-switch" id="switch-to-register">¿No tienes cuenta? <a href="javascript:void(0)"
+                        id="show-register"
+                        onclick="document.getElementById('login-form').style.display='none';document.getElementById('register-form').style.display='block';document.getElementById('superuser-form').style.display='none';document.getElementById('switch-to-register').style.display='none';document.getElementById('switch-to-login').style.display='block'">Regístrate</a>
+                </p>
+            </form>
+
+            <!-- Register Form -->
+            <form class="auth-form" id="register-form" style="display:none">
+                <h2>Crear Cuenta</h2>
+                <div class="form-group">
+                    <label for="register-name">Nombre completo</label>
+                    <input type="text" id="register-name" placeholder="Tu nombre" autocomplete="name" required>
+                </div>
+                <div class="form-group">
+                    <label for="register-username">Usuario</label>
+                    <input type="text" id="register-username" placeholder="Elige un nombre de usuario"
+                        autocomplete="username" required>
+                </div>
+                <div class="form-group">
+                    <label for="register-password">Contraseña</label>
+                    <input type="password" id="register-password" placeholder="Mínimo 4 caracteres"
+                        autocomplete="new-password" required>
+                </div>
+                <div class="form-group">
+                    <label for="register-password2">Repetir contraseña</label>
+                    <input type="password" id="register-password2" placeholder="Repite la contraseña"
+                        autocomplete="new-password" required>
+                </div>
+                <div class="auth-error" id="register-error"></div>
+                <button type="submit" class="btn-primary auth-btn">Crear cuenta</button>
+                <p class="auth-switch" id="switch-to-login" style="display:none">¿Ya tienes cuenta? <a
+                        href="javascript:void(0)" id="show-login"
+                        onclick="document.getElementById('register-form').style.display='none';document.getElementById('superuser-form').style.display='none';document.getElementById('login-form').style.display='block';document.getElementById('switch-to-login').style.display='none';document.getElementById('switch-to-register').style.display='block'">Inicia
+                        sesión</a></p>
+            </form>
+
+            <!-- Super User Setup Form (first time only) -->
+            <form class="auth-form" id="superuser-form" style="display:none">
+                <h2>🔐 Crear Super Usuario</h2>
+                <p style="font-size:0.8rem;color:var(--text-secondary);margin-bottom:0.8rem">Primera vez: crea la cuenta
+                    de administrador. Esta cuenta podrá gestionar usuarios y eliminar contenido.</p>
+                <div class="form-group">
+                    <label for="su-name">Nombre completo</label>
+                    <input type="text" id="su-name" placeholder="Nombre del administrador" autocomplete="name" required>
+                </div>
+                <div class="form-group">
+                    <label for="su-username">Usuario</label>
+                    <input type="text" id="su-username" placeholder="Usuario de administrador" autocomplete="username"
+                        required>
+                </div>
+                <div class="form-group">
+                    <label for="su-password">Contraseña</label>
+                    <input type="password" id="su-password" placeholder="Mínimo 4 caracteres"
+                        autocomplete="new-password" required>
+                </div>
+                <div class="form-group">
+                    <label for="su-password2">Repetir contraseña</label>
+                    <input type="password" id="su-password2" placeholder="Repite la contraseña"
+                        autocomplete="new-password" required>
+                </div>
+                <div class="auth-error" id="su-error"></div>
+                <button type="submit" class="btn-primary auth-btn">🔐 Crear Super Usuario</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Header -->
+    <header class="app-header">
+        <div class="header-left">
+            <button class="btn-sidebar-toggle" id="btn-sidebar-toggle" title="Menú">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                    stroke-linecap="round">
+                    <line x1="3" y1="6" x2="21" y2="6" />
+                    <line x1="3" y1="12" x2="21" y2="12" />
+                    <line x1="3" y1="18" x2="21" y2="18" />
+                </svg>
+            </button>
+            <div class="logo" style="cursor: pointer;" onclick="window.location.reload()">
+                <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
+                    <rect width="32" height="32" rx="8" fill="url(#logo-grad)" />
+                    <path d="M10 16L14 20L22 12" stroke="white" stroke-width="2.5" stroke-linecap="round"
+                        stroke-linejoin="round" />
+                    <defs>
+                        <linearGradient id="logo-grad" x1="0" y1="0" x2="32" y2="32">
+                            <stop stop-color="#6366f1" />
+                            <stop offset="1" stop-color="#8b5cf6" />
+                        </linearGradient>
+                    </defs>
+                </svg>
+                <h1>Bug Tracker</h1>
+            </div>
+        </div>
+        <!-- Global Search -->
+        <div class="header-search" id="header-search">
+            <svg class="header-search-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                stroke-width="2" stroke-linecap="round">
+                <circle cx="11" cy="11" r="8" />
+                <line x1="21" y1="21" x2="16.65" y2="16.65" />
+            </svg>
+            <input type="text" id="global-search-input"
+                placeholder="Buscar por fecha, versión, cliente, tester, asignado..." autocomplete="off">
+            <button class="header-search-clear" id="global-search-clear" title="Limpiar búsqueda" style="display:none">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                    stroke-linecap="round">
+                    <line x1="18" y1="6" x2="6" y2="18" />
+                    <line x1="6" y1="6" x2="18" y2="18" />
+                </svg>
+            </button>
+        </div>
+        <div class="stats-bar" id="stats-bar">
+            <div class="stat" id="stat-total" title="Total">
+                <span class="stat-value">0</span>
+                <span class="stat-label">Total</span>
+            </div>
+            <div class="stat" id="stat-open" title="Nuevos">
+                <span class="stat-value">0</span>
+                <span class="stat-label">Abiertos</span>
+            </div>
+            <div class="stat" id="stat-progress" title="En curso">
+                <span class="stat-value">0</span>
+                <span class="stat-label">En curso</span>
+            </div>
+            <div class="stat" id="stat-resolved" title="Resueltos">
+                <span class="stat-value">0</span>
+                <span class="stat-label">Resueltos</span>
+            </div>
+        </div>
+        <div class="header-right">
+            <div class="user-menu" id="user-menu">
+                <button id="btn-profile-trigger" style="display:flex;align-items:center;gap:0.6rem;background:none;border:none;cursor:pointer;color:inherit;font-family:inherit;padding:0;text-align:left">
+                    <div class="user-avatar" id="user-avatar">U</div>
+                    <span class="user-name" id="user-name">Usuario</span>
+                    <span class="user-role-badge" id="user-role-badge" style="display:none">ADMIN</span>
+                </button>
+                <button class="btn-icon" id="btn-admin-panel" title="Gestionar usuarios" style="display:none">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        stroke-linecap="round">
+                        <circle cx="12" cy="12" r="3" />
+                        <path
+                            d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
+                    </svg>
+                </button>
+                <button class="btn-theme" id="btn-theme" title="Cambiar tema">🌙</button>
+                <button class="btn-icon" id="btn-report" title="Generar reporte">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        stroke-linecap="round">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                        <polyline points="14 2 14 8 20 8" />
+                        <line x1="16" y1="13" x2="8" y2="13" />
+                        <line x1="16" y1="17" x2="8" y2="17" />
+                        <polyline points="10 9 9 9 8 9" />
+                    </svg>
+                </button>
+                <button class="btn-icon" id="btn-logout" title="Cerrar sesión">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        stroke-linecap="round">
+                        <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                        <polyline points="16 17 21 12 16 7" />
+                        <line x1="21" y1="12" x2="9" y2="12" />
+                    </svg>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Layout -->
+    <div class="sidebar-backdrop" id="sidebar-backdrop"></div>
+    <main class="app-main">
+        <!-- Sidebar -->
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-section">
+                <div class="sidebar-section-header">
+                    <h2>Listas</h2>
+                    <button class="btn-icon" id="btn-add-list" title="Añadir lista">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2" stroke-linecap="round">
+                            <line x1="12" y1="5" x2="12" y2="19" />
+                            <line x1="5" y1="12" x2="19" y2="12" />
+                        </svg>
+                    </button>
+                </div>
+                <div class="list-list" id="list-list"></div>
+            </div>
+
+            <div class="sidebar-divider"></div>
+
+            <div class="sidebar-section">
+                <div class="sidebar-section-header">
+                    <h2>📌 Versiones SW</h2>
+                </div>
+                <div id="filter-sw-versions"></div>
+            </div>
+            <div class="sidebar-section">
+                <div class="sidebar-section-header">
+                    <h2>🏢 Clientes</h2>
+                </div>
+                <div id="filter-clients"></div>
+            </div>
+            <div class="sidebar-section">
+                <div class="sidebar-section-header">
+                    <h2>✅ Tareas resueltas</h2>
+                </div>
+                <div id="filter-resolvers"></div>
+            </div>
+            <div class="sidebar-section">
+                <div class="sidebar-section-header">
+                    <h2>✏️ Testers</h2>
+                </div>
+                <div id="filter-creators"></div>
+            </div>
+            <div class="sidebar-section">
+                <div class="sidebar-section-header">
+                    <h2>👤 Asignados</h2>
+                </div>
+                <div id="filter-assignees"></div>
+            </div>
+        </aside>
+
+        <!-- Content Area -->
+        <section class="content" id="content">
+            <!-- Empty state -->
+            <div class="empty-state" id="empty-state">
+                <svg width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1"
+                    stroke-linecap="round">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                    <polyline points="14 2 14 8 20 8" />
+                    <line x1="12" y1="18" x2="12" y2="12" />
+                    <line x1="9" y1="15" x2="15" y2="15" />
+                </svg>
+                <h2>Comienza creando una lista</h2>
+                <p>Haz clic en el botón <strong>+</strong> junto a "Listas" para empezar</p>
+            </div>
+
+            <!-- Bug list area (hidden by default) -->
+            <div class="bug-area" id="bug-area" style="display:none;">
+                <div class="bug-area-header">
+                    <div class="bug-area-title">
+                        <h2 id="current-list-title">Tareas</h2>
+                        <span class="badge" id="current-list-count">0</span>
+                    </div>
+                    <div class="bug-area-actions">
+                        <div class="filter-group">
+                            <button class="filter-btn active" data-filter="all">Todos</button>
+                            <button class="filter-btn" data-filter="new">Nuevos</button>
+                            <button class="filter-btn" data-filter="in-progress">En curso</button>
+                            <button class="filter-btn" data-filter="passed">Pasados</button>
+                            <button class="filter-btn" data-filter="failed">Fallidos</button>
+                        </div>
+                        <select id="sort-select" title="Ordenar tareas">
+                            <option value="newest">📅 Más recientes</option>
+                            <option value="oldest">📅 Más antiguas</option>
+                            <option value="priority-high">🔴 Prioridad ↓</option>
+                            <option value="priority-low">🟢 Prioridad ↑</option>
+                            <option value="status">📊 Estado</option>
+                            <option value="title">🔤 Título A-Z</option>
+                            <option value="assignee">👤 Asignado</option>
+                            <option value="client">🏢 Cliente</option>
+                        </select>
+                        <button class="btn-primary" id="btn-add-bug">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2.5" stroke-linecap="round">
+                                <line x1="12" y1="5" x2="12" y2="19" />
+                                <line x1="5" y1="12" x2="19" y2="12" />
+                            </svg>
+                            Nueva Tarea
+                        </button>
+                    </div>
+                </div>
+                <div class="search-tags" id="search-tags" style="margin-bottom: 1rem;"></div>
+                <div class="bug-list" id="bug-list"></div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Modal: Add/Edit List -->
+    <div class="modal-overlay" id="modal-list">
+        <div class="modal">
+            <div class="modal-header">
+                <h3 id="modal-list-title">Nueva Lista</h3>
+                <button class="btn-icon modal-close" data-modal="modal-list">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        stroke-linecap="round">
+                        <line x1="18" y1="6" x2="6" y2="18" />
+                        <line x1="6" y1="6" x2="18" y2="18" />
+                    </svg>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="list-name">Nombre de lista</label>
+                    <input type="text" id="list-name" placeholder="Ej: UI Tests, API Tests, Regresión..."
+                        autocomplete="off">
+                </div>
+                <div class="form-group">
+                    <label for="list-color">Color</label>
+                    <div class="color-picker" id="list-color-picker">
+                        <button class="color-swatch active" data-color="#6366f1" style="background:#6366f1"></button>
+                        <button class="color-swatch" data-color="#8b5cf6" style="background:#8b5cf6"></button>
+                        <button class="color-swatch" data-color="#ec4899" style="background:#ec4899"></button>
+                        <button class="color-swatch" data-color="#f43f5e" style="background:#f43f5e"></button>
+                        <button class="color-swatch" data-color="#f97316" style="background:#f97316"></button>
+                        <button class="color-swatch" data-color="#eab308" style="background:#eab308"></button>
+                        <button class="color-swatch" data-color="#22c55e" style="background:#22c55e"></button>
+                        <button class="color-swatch" data-color="#06b6d4" style="background:#06b6d4"></button>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-secondary" data-modal="modal-list">Cancelar</button>
+                <button class="btn-primary" id="btn-save-list">Guardar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Add/Edit Bug -->
+    <div class="modal-overlay" id="modal-bug">
+        <div class="modal modal-lg">
+            <div class="modal-header">
+                <h3 id="modal-bug-title">Nueva Tarea</h3>
+                <button class="btn-icon modal-close" data-modal="modal-bug">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        stroke-linecap="round">
+                        <line x1="18" y1="6" x2="6" y2="18" />
+                        <line x1="6" y1="6" x2="18" y2="18" />
+                    </svg>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="form-row">
+                    <div class="form-group flex-2">
+                        <label for="bug-title">Título de la tarea</label>
+                        <input type="text" id="bug-title" placeholder="Describe la tarea brevemente..."
+                            autocomplete="off">
+                    </div>
+                    <div class="form-group flex-1">
+                        <label for="bug-priority">Prioridad</label>
+                        <select id="bug-priority">
+                            <option value="low">🟢 Baja</option>
+                            <option value="medium" selected>🟡 Media</option>
+                            <option value="high">🟠 Alta</option>
+                            <option value="critical">🔴 Crítica</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="bug-description">Descripción</label>
+                    <textarea id="bug-description" rows="3"
+                        placeholder="Pasos para reproducir, comportamiento esperado vs actual..."></textarea>
+                </div>
+                <div class="form-row">
+                    <div class="form-group flex-1">
+                        <label for="bug-status">Estado</label>
+                        <select id="bug-status">
+                            <option value="new">Nuevo</option>
+                            <option value="in-progress">En curso</option>
+                            <option value="passed">Pasado</option>
+                            <option value="failed">Fallido</option>
+                        </select>
+                    </div>
+                    <div class="form-group flex-1">
+                        <label for="bug-assignee">Asignado a (opcional, separar con comas)</label>
+                        <input type="text" id="bug-assignee" placeholder="Ej: Juan, María, Pedro" autocomplete="off">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group flex-1">
+                        <label for="bug-client">Cliente (opcional)</label>
+                        <input type="text" id="bug-client" placeholder="Nombre del cliente..." autocomplete="off">
+                    </div>
+                    <div class="form-group flex-1">
+                        <label for="bug-sw-version">Versión SW (opcional)</label>
+                        <input type="text" id="bug-sw-version" placeholder="Ej: v2.1.3" autocomplete="off">
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-secondary" data-modal="modal-bug">Cancelar</button>
+                <button class="btn-primary" id="btn-save-bug">Guardar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Bug Detail / Comments -->
+    <div class="modal-overlay" id="modal-detail">
+        <div class="modal modal-xl">
+            <div class="modal-header">
+                <h3 id="detail-title">Detalle de la Tarea</h3>
+                <div style="display:flex;gap:0.4rem;align-items:center">
+                    <button class="btn-primary btn-sm" id="btn-detail-edit" title="Editar tarea"
+                        style="font-size:0.75rem;padding:0.3rem 0.7rem">
+                        ✏️ Editar
+                    </button>
+                    <button class="btn-icon modal-close" data-modal="modal-detail">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2" stroke-linecap="round">
+                            <line x1="18" y1="6" x2="6" y2="18" />
+                            <line x1="6" y1="6" x2="18" y2="18" />
+                        </svg>
+                    </button>
+                </div>
+            </div>
+            <div class="modal-body detail-body">
+                <div class="detail-main">
+                    <div class="detail-meta" id="detail-meta"></div>
+                    <div class="detail-description" id="detail-description"></div>
+                </div>
+                <div class="detail-sidebar">
+                    <h4>Comentarios</h4>
+                    <div class="comments-list" id="comments-list"></div>
+                    <div class="comment-form">
+                        <textarea id="comment-text" rows="2" placeholder="Escribe un comentario..."></textarea>
+                        <button class="btn-primary btn-sm" id="btn-add-comment">Comentar</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Confirmation dialog -->
+    <div class="modal-overlay" id="modal-confirm">
+        <div class="modal modal-sm">
+            <div class="modal-header">
+                <h3>Confirmar</h3>
+                <button class="btn-icon modal-close" data-modal="modal-confirm">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        stroke-linecap="round">
+                        <line x1="18" y1="6" x2="6" y2="18" />
+                        <line x1="6" y1="6" x2="18" y2="18" />
+                    </svg>
+                </button>
+            </div>
+            <div class="modal-body">
+                <p id="confirm-message">¿Estás seguro?</p>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-secondary" data-modal="modal-confirm">Cancelar</button>
+                <button class="btn-danger" id="btn-confirm-action">Eliminar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Report Generator -->
+    <div class="modal-overlay" id="modal-report">
+        <div class="modal">
+            <div class="modal-header">
+                <h3>📊 Generar Reporte</h3>
+                <button class="btn-icon modal-close" data-modal="modal-report">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        stroke-linecap="round">
+                        <line x1="18" y1="6" x2="6" y2="18" />
+                        <line x1="6" y1="6" x2="18" y2="18" />
+                    </svg>
+                </button>
+            </div>
+            <div class="modal-body">
+                <p style="color:var(--text-muted);font-size:0.8rem;margin-bottom:1rem">Configura los filtros para
+                    generar un reporte imprimible de las tareas.</p>
+                <div class="form-row">
+                    <div class="form-group flex-1">
+                        <label for="report-date-from">Desde</label>
+                        <input type="date" id="report-date-from">
+                    </div>
+                    <div class="form-group flex-1">
+                        <label for="report-date-to">Hasta</label>
+                        <input type="date" id="report-date-to">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group flex-1">
+                        <label for="report-client">Cliente</label>
+                        <select id="report-client">
+                            <option value="">— Todos —</option>
+                        </select>
+                    </div>
+                    <div class="form-group flex-1">
+                        <label for="report-sw-version">Versión SW</label>
+                        <select id="report-sw-version">
+                            <option value="">— Todas —</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group flex-1">
+                        <label for="report-list">Lista</label>
+                        <select id="report-list">
+                            <option value="">— Todas —</option>
+                        </select>
+                    </div>
+                    <div class="form-group flex-1">
+                        <label for="report-status">Estado</label>
+                        <select id="report-status">
+                            <option value="">— Todos —</option>
+                            <option value="new">Nuevo</option>
+                            <option value="in-progress">En curso</option>
+                            <option value="passed">Pasado</option>
+                            <option value="failed">Fallido</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-group" style="margin-top:0.3rem">
+                    <label style="display:flex;align-items:center;gap:0.3rem;cursor:pointer;font-size:0.85rem">
+                        <input type="checkbox" id="report-include-resolved" checked> Incluir tareas resueltas
+                    </label>
+                    <label
+                        style="display:flex;align-items:center;gap:0.3rem;cursor:pointer;font-size:0.85rem;margin-top:0.3rem">
+                        <input type="checkbox" id="report-include-comments"> Incluir comentarios
+                    </label>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-secondary" data-modal="modal-report">Cancelar</button>
+                <button class="btn-primary" id="btn-generate-report">📊 Generar reporte</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Resolve Task -->
+    <div class="modal-overlay" id="modal-resolve">
+        <div class="modal modal-sm">
+            <div class="modal-header">
+                <h3>✅ Marcar como resuelta</h3>
+                <button class="btn-icon modal-close" data-modal="modal-resolve">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        stroke-linecap="round">
+                        <line x1="18" y1="6" x2="6" y2="18" />
+                        <line x1="6" y1="6" x2="18" y2="18" />
+                    </svg>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="resolve-who">¿Quién la resolvió?</label>
+                    <input type="text" id="resolve-who" placeholder="Nombre de quien resolvió..." autocomplete="off">
+                </div>
+                <div class="form-group">
+                    <label for="resolve-version">Versión donde se resolvió</label>
+                    <input type="text" id="resolve-version" placeholder="Ej: v2.1.4" autocomplete="off">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-secondary" data-modal="modal-resolve">Cancelar</button>
+                <button class="btn-primary" id="btn-confirm-resolve">✅ Resolver tarea</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Admin Panel (User Management) -->
+    <div class="modal-overlay" id="modal-admin">
+        <div class="modal modal-lg">
+            <div class="modal-header">
+                <h3>🔐 Panel de Administración</h3>
+                <button class="btn-icon modal-close" data-modal="modal-admin">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        stroke-linecap="round">
+                        <line x1="18" y1="6" x2="6" y2="18" />
+                        <line x1="6" y1="6" x2="18" y2="18" />
+                    </svg>
+                </button>
+            </div>
+            <div class="modal-body">
+                <h4
+                    style="margin-bottom:0.8rem;color:var(--text-secondary);font-size:0.85rem;text-transform:uppercase;letter-spacing:0.05em">
+                    Usuarios registrados</h4>
+                <div id="admin-user-list"></div>
+                <div style="margin-top:1.5rem;padding-top:1rem;border-top:1px solid var(--border)">
+                    <h4
+                        style="margin-bottom:0.8rem;color:var(--text-secondary);font-size:0.85rem;text-transform:uppercase;letter-spacing:0.05em">
+                        💾 Copias de seguridad</h4>
+                    <div style="display:flex;gap:0.6rem;flex-wrap:wrap">
+                        <button class="btn-primary btn-sm" id="btn-backup"
+                            style="font-size:0.8rem;padding:0.4rem 0.8rem">
+                            ⬇️ Descargar backup
+                        </button>
+                        <button class="btn-secondary btn-sm" id="btn-restore"
+                            style="font-size:0.8rem;padding:0.4rem 0.8rem">
+                            ⬆️ Restaurar backup
+                        </button>
+                    </div>
+                    <p style="font-size:0.7rem;color:var(--text-muted);margin-top:0.5rem">El backup incluye todas las
+                        listas, tareas, comentarios y usuarios.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Profile Modal -->
+    <div class="modal-overlay" id="modal-profile">
+        <div class="modal-content" style="max-width: 400px;">
+            <h3 class="modal-title">Mi Perfil</h3>
+            <p style="color:var(--text-muted);font-size:0.8rem;margin-bottom:1rem">Actualiza tu información personal y contraseña.</p>
+            <div class="form-group">
+                <label for="profile-name">Nombre</label>
+                <input type="text" id="profile-name">
+            </div>
+            <div class="form-group">
+                <label for="profile-email">Email (opcional)</label>
+                <input type="email" id="profile-email" placeholder="Para enviarte reportes">
+            </div>
+            <div class="form-group">
+                <label for="profile-password">Nueva Contraseña (opcional)</label>
+                <input type="password" id="profile-password" placeholder="Dejar en blanco para no cambiar">
+            </div>
+            <div class="modal-actions" style="display:flex; gap:0.6rem; margin-top: 1.5rem;">
+                <button class="btn-secondary modal-close" style="flex:1; justify-content:center;">Cancelar</button>
+                <button class="btn-primary" id="btn-save-profile" style="flex:1; justify-content:center;">Guardar</button>
+            </div>
+        </div>
+    </div>
+
+    <input type="file" id="restore-file-input" accept=".json" style="display:none">
+
+    <script src="app.js?v=2.7"></script>
+    </body>
+
+</html>

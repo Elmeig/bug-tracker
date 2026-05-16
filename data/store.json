@@ -1,0 +1,277 @@
+{
+  "versions": [
+    {
+      "id": "648c0e01-3c13-4401-979e-21cbbde74990",
+      "name": "__default__",
+      "description": "",
+      "lists": [
+        {
+          "id": "6b75e998-f62c-4676-b615-5e65c04c27ac",
+          "name": "Mejoras Softlens",
+          "color": "#6366f1",
+          "bugs": [
+            {
+              "id": "a1889033-276a-415f-bc5e-d8da2d4aa53f",
+              "title": "Fallo Cut depth toric roughing",
+              "description": "Si el cut depth de la pasada de desbaste torico es mas grande que la max oscil #29 = 0, lo cual hace que no se deje material para la pasada de desbaste",
+              "priority": "medium",
+              "status": "new",
+              "assignee": "",
+              "client": "REM",
+              "swVersion": "15.3.2.0",
+              "createdBy": "Mehdi",
+              "createdByUser": "mehdi",
+              "comments": [],
+              "createdAt": 1778844006773,
+              "updatedAt": 1778919170757
+            }
+          ],
+          "createdAt": 1778838504328
+        },
+        {
+          "id": "9ba97002-af26-48bd-9f88-5f58470fbf92",
+          "name": "Fallos en clientes",
+          "color": "#6366f1",
+          "bugs": [
+            {
+              "id": "df04caba-1c72-49aa-b3b6-f8b6c468a67b",
+              "title": "Alinear en front toric",
+              "description": "Al poner alinear en la zona óptica front de una lente bitorica se mezclaba la #6 y la #8 como si casi toda la lente fuese la parte de transición entre la periferia y la zona óptica. Vamos a poner solo #6",
+              "priority": "high",
+              "status": "in-progress",
+              "assignee": "Álvaro",
+              "client": "Ver Mexico",
+              "swVersion": "11.0.2.15",
+              "createdBy": "Mehdi",
+              "createdByUser": "mehdi",
+              "comments": [],
+              "createdAt": 1778848625807,
+              "updatedAt": 1778919014121
+            },
+            {
+              "id": "930fb5fd-9ec7-4d77-a63a-ecefa3eb59e6",
+              "title": "Zona optica torica front espejada",
+              "description": "Las zonas ópticas front si se hacen con ASG a izquierdas salen los ángulos espejados. Por ejemplo 30 sale 150 y 135 da 45.",
+              "priority": "high",
+              "status": "passed",
+              "assignee": "Álvaro",
+              "client": "Tiedra",
+              "swVersion": "15.2.10.0",
+              "createdBy": "Mehdi",
+              "createdByUser": "mehdi",
+              "comments": [],
+              "createdAt": 1778848965655,
+              "updatedAt": 1778918950211,
+              "resolvedBy": "Álvaro",
+              "resolvedVersion": "15.3.2.0",
+              "resolvedAt": 1778857898010,
+              "resolvedByUser": "El Mehdi Ighirri"
+            },
+            {
+              "id": "a6414051-9d49-4f0a-affd-ec2b7d47f42d",
+              "title": "Mini files no se abre",
+              "description": "Hay un diseño del cliente que no le abre. Hay que pedírselo para verlo con los programmers",
+              "priority": "medium",
+              "status": "new",
+              "assignee": "Mehdi",
+              "client": "Tiedra",
+              "swVersion": "15.2.10.0",
+              "createdBy": "Mehdi",
+              "createdByUser": "mehdi",
+              "comments": [],
+              "createdAt": 1778850968433,
+              "updatedAt": 1778919088606
+            },
+            {
+              "id": "e3c15a62-759b-4c69-bdbb-2b7ca99bd672",
+              "title": "Fallo al cargar un front desde producción en loader",
+              "description": "Espesor en pantalla loader cuando es de producción aparece el espesor final de la lente",
+              "priority": "high",
+              "status": "in-progress",
+              "assignee": "Fran",
+              "client": "Tiedra",
+              "swVersion": "15.2.10.0",
+              "createdBy": "Mehdi",
+              "createdByUser": "mehdi",
+              "comments": [],
+              "createdAt": 1778852360511,
+              "updatedAt": 1778919078082
+            },
+            {
+              "id": "a8f070c5-2aed-4300-a5e0-0bc82f242621",
+              "title": "Referencias de las herramientas borradas",
+              "description": "En esta versión se han borrado las referencias de los diamantes y no deja meterlas de nuevo.",
+              "priority": "medium",
+              "status": "passed",
+              "assignee": "Fran",
+              "client": "Tiedra",
+              "swVersion": "15.2.10.0",
+              "createdBy": "Mehdi",
+              "createdByUser": "mehdi",
+              "comments": [],
+              "createdAt": 1778852617291,
+              "updatedAt": 1778918936219,
+              "resolvedBy": "Fran",
+              "resolvedVersion": "15.2.13.0",
+              "resolvedAt": 1778857748814,
+              "resolvedByUser": "El Mehdi Ighirri"
+            },
+            {
+              "id": "23b210a0-1277-4632-b223-1a6708419010",
+              "title": "Primera orden del loader",
+              "description": "Cuando creas una nueva lista (loader), si la primera lente es de producción da error, si es de Auto si funciona",
+              "priority": "medium",
+              "status": "in-progress",
+              "assignee": "Fran",
+              "client": "Tiedra",
+              "swVersion": "15.2.10.0",
+              "createdBy": "Mehdi",
+              "createdByUser": "mehdi",
+              "comments": [],
+              "createdAt": 1778853908510,
+              "updatedAt": 1778919001053
+            },
+            {
+              "id": "c6e7f387-e3cb-4e5e-8d07-d0f558e79180",
+              "title": "Errata en mostrar el diámetro duplicando auto",
+              "description": "Al duplicar una orden Auto y diámetro sale dividido entre 10000. Para 14 sale 0.0014",
+              "priority": "medium",
+              "status": "new",
+              "assignee": "",
+              "client": "Tiedra",
+              "swVersion": "15.2.10.0",
+              "createdBy": "Mehdi",
+              "createdByUser": "mehdi",
+              "comments": [],
+              "createdAt": 1778854699050,
+              "updatedAt": 1778919149870
+            },
+            {
+              "id": "b4bd734c-0027-4979-a41a-e113d5d7dec2",
+              "title": "Incongruencia en las indicaciones de Work Orders",
+              "description": "Hay que revisar con el cliente que quiere decir con : Las líneas verdes del loader no respetan por donde van",
+              "priority": "medium",
+              "status": "new",
+              "assignee": "Fran, Jesús",
+              "client": "Tiedra",
+              "swVersion": "15.2.10.0",
+              "createdBy": "Mehdi",
+              "createdByUser": "mehdi",
+              "comments": [],
+              "createdAt": 1778854995338,
+              "updatedAt": 1778918987233
+            }
+          ],
+          "createdAt": 1778848227972
+        },
+        {
+          "id": "dd4ce309-af6e-4c2d-a134-d7b753f4f5b7",
+          "name": "Peticiones de clientes",
+          "color": "#06b6d4",
+          "bugs": [
+            {
+              "id": "e95361ea-139e-413f-a3a2-fccf972534ec",
+              "title": "Modificar editar la tabla excel",
+              "description": "Quieren poder editar las tablas de Excel desde una orden abierta en la pantalla de Auto. Actualmente lo pueden hacer en la versión 7.0.0.142",
+              "priority": "low",
+              "status": "new",
+              "assignee": "",
+              "client": "Tiedra",
+              "swVersion": "15.2.10.0",
+              "createdBy": "Mehdi",
+              "createdByUser": "mehdi",
+              "comments": [],
+              "createdAt": 1778851419039,
+              "updatedAt": 1778919027427
+            },
+            {
+              "id": "e9418b65-ce40-4194-87bb-532af2da43da",
+              "title": "Cargar-unir bases de datos",
+              "description": "Les gustara poder cargar una base de datos sin machacar la que hay en ese momento",
+              "priority": "low",
+              "status": "new",
+              "assignee": "",
+              "client": "Tiedra",
+              "swVersion": "15.2.10.0",
+              "createdBy": "Mehdi",
+              "createdByUser": "mehdi",
+              "comments": [],
+              "createdAt": 1778851634262,
+              "updatedAt": 1778919040419
+            }
+          ],
+          "createdAt": 1778851074726
+        },
+        {
+          "id": "53e3b763-73d3-4483-9439-f5255d6d058c",
+          "name": "Pendientes en clientes",
+          "color": "#eab308",
+          "bugs": [
+            {
+              "id": "7611c563-9831-4af2-90b5-2561e49f58d6",
+              "title": "Bandejas robot",
+              "description": "Llevar 6 bandejas para el robot",
+              "priority": "medium",
+              "status": "new",
+              "assignee": "",
+              "client": "Tiedra",
+              "swVersion": "",
+              "createdBy": "Mehdi",
+              "createdByUser": "mehdi",
+              "comments": [],
+              "createdAt": 1778851790210,
+              "updatedAt": 1778919053426
+            },
+            {
+              "id": "c1290e45-77be-49df-8cdc-b1c81e64e379",
+              "title": "Diferencia entre Autothikness y lo medido",
+              "description": "No hay repetitividad en las mediciones de los semiterminados, y no se ajustan con los del Autothikness. Probablemente sea porque los tacos no se bloquean bien el los chuks planos y quedan torcidos.  No se puede resolver palpando en el centro porque usan tacos precortados",
+              "priority": "medium",
+              "status": "new",
+              "assignee": "",
+              "client": "Tiedra",
+              "swVersion": "",
+              "createdBy": "Mehdi",
+              "createdByUser": "mehdi",
+              "comments": [],
+              "createdAt": 1778852161647,
+              "updatedAt": 1778919065962
+            },
+            {
+              "id": "d25bfa04-9c54-4eb1-82f9-3b00b4f7996c",
+              "title": "Gomas entre el torno y el robot",
+              "description": "Quitar las gomas que hay pegadas en el chasis de los tornos. Transmiten la vibración del robot al los tornos.",
+              "priority": "medium",
+              "status": "new",
+              "assignee": "",
+              "client": "Tiedra",
+              "swVersion": "",
+              "createdBy": "Mehdi",
+              "createdByUser": "mehdi",
+              "comments": [],
+              "createdAt": 1778852871091,
+              "updatedAt": 1778919160811
+            },
+            {
+              "id": "21dcf5a5-de4b-4f72-a0ff-9d60dc4856a2",
+              "title": "Soplador de linear 2 no va",
+              "description": "Ver porque la herramienta 2 del torno 9 el soplador no sopla",
+              "priority": "medium",
+              "status": "new",
+              "assignee": "Mehdi",
+              "client": "Tiedra",
+              "swVersion": "15.2.10.0",
+              "createdBy": "Mehdi",
+              "createdByUser": "mehdi",
+              "comments": [],
+              "createdAt": 1778855111939,
+              "updatedAt": 1778918968285
+            }
+          ],
+          "createdAt": 1778851749391
+        }
+      ],
+      "createdAt": 1778838211309
+    }
+  ]
+}
