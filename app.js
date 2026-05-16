@@ -47,9 +47,12 @@ const Sync = {
     // Push data to server (fire-and-forget, non-blocking)
     push(key, data) {
         if (!this._serverAvailable) return;
+        const token = localStorage.getItem('bugtracker_token');
+        const headers = { 'Content-Type': 'application/json' };
+        if (token) headers['Authorization'] = 'Bearer ' + token;
         fetch(this._baseUrl + '/api/' + key, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers,
             body: JSON.stringify(data)
         }).catch(() => {});
     }
@@ -59,6 +62,16 @@ const Sync = {
 const Auth = {
     _users: [],
     _currentUser: null,
+    _token: null,
+
+    // Simple offline hash using SubtleCrypto (SHA-256) — better than plain text
+    async _simpleHash(password) {
+        const encoder = new TextEncoder();
+        const data = encoder.encode(password);
+        const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+        const hashArray = Array.from(new Uint8Array(hashBuffer));
+        return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+    },
 
     load() {
         // Use server-injected data if available (instant, no fetch needed)
@@ -71,48 +84,119 @@ const Auth = {
         }
         const session = localStorage.getItem('bugtracker_session');
         if (session) this._currentUser = JSON.parse(session);
+        const token = localStorage.getItem('bugtracker_token');
+        if (token) this._token = token;
     },
     async loadFromServer() {
         const data = await Sync.pull('users', 'bugtracker_users');
-        if (data) this._users = data;
+        if (data) {
+            // Merge server-safe users with local password hashes so offline login still works
+            this._users = data.map(serverUser => {
+                const localUser = this._users.find(u => u.id === serverUser.id);
+                if (localUser && localUser.passwordHash) {
+                    return { ...serverUser, passwordHash: localUser.passwordHash };
+                }
+                return serverUser;
+            });
+            localStorage.setItem('bugtracker_users', JSON.stringify(this._users));
+        }
     },
     saveUsers() {
+        // Strip sensitive fields before syncing to server
+        const safeUsers = this._users.map(u => {
+            const clone = { ...u };
+            delete clone.password;
+            delete clone.passwordHash;
+            return clone;
+        });
         localStorage.setItem('bugtracker_users', JSON.stringify(this._users));
-        Sync.push('users', this._users);
+        Sync.push('users', safeUsers);
     },
     saveSession() {
         if (this._currentUser) localStorage.setItem('bugtracker_session', JSON.stringify(this._currentUser));
         else localStorage.removeItem('bugtracker_session');
+        if (this._token) localStorage.setItem('bugtracker_token', this._token);
+        else localStorage.removeItem('bugtracker_token');
     },
 
     get hasSuperUser() { return this._users.some(u => u.role === 'admin'); },
 
-    register(name, username, password, role = 'user') {
-        username = username.toLowerCase().trim();
-        if (this._users.find(u => u.username === username)) return { error: 'El usuario ya existe' };
-        if (password.length < 4) return { error: 'La contraseña debe tener al menos 4 caracteres' };
-        const user = { id: crypto.randomUUID(), name: name.trim(), username, password: btoa(password), role, email: '', createdAt: Date.now() };
-        this._users.push(user);
-        this.saveUsers();
-        this._currentUser = { id: user.id, name: user.name, username: user.username, role: user.role, email: user.email };
-        this.saveSession();
-        return { success: true };
+    async register(name, username, password, role = 'user') {
+        if (!Sync.isOnline) {
+            // Fallback offline: register locally with simple hash (not secure, but better than plain text)
+            username = username.toLowerCase().trim();
+            if (this._users.find(u => u.username === username)) return { error: 'El usuario ya existe' };
+            if (password.length < 4) return { error: 'La contraseña debe tener al menos 4 caracteres' };
+            const hash = await this._simpleHash(password);
+            const user = { id: crypto.randomUUID(), name: name.trim(), username, passwordHash: 'local:' + hash, role, email: '', createdAt: Date.now() };
+            this._users.push(user);
+            this.saveUsers();
+            this._currentUser = { id: user.id, name: user.name, username: user.username, role: user.role, email: user.email };
+            this.saveSession();
+            return { success: true };
+        }
+        try {
+            const res = await fetch(Sync._baseUrl + '/api/register', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name, username, password, role })
+            });
+            const data = await res.json();
+            if (!res.ok) return { error: data.error || 'Error en el registro' };
+            this._token = data.token;
+            this._currentUser = data.user;
+            this.saveSession();
+            // Refresh users list from server
+            await this.loadFromServer();
+            return { success: true };
+        } catch (e) {
+            return { error: 'Error de conexión con el servidor' };
+        }
     },
-    login(username, password) {
-        username = username.toLowerCase().trim();
-        const user = this._users.find(u => u.username === username && u.password === btoa(password));
-        if (!user) return { error: 'Usuario o contraseña incorrectos' };
-        this._currentUser = { id: user.id, name: user.name, username: user.username, role: user.role || 'user', email: user.email || '' };
-        this.saveSession();
-        return { success: true };
+    async login(username, password) {
+        if (!Sync.isOnline) {
+            // Fallback offline: check locally
+            username = username.toLowerCase().trim();
+            const user = this._users.find(u => u.username === username);
+            if (!user) return { error: 'Usuario o contraseña incorrectos' };
+            // Offline fallback only works for legacy local users (local: prefix)
+            if (user.passwordHash && user.passwordHash.startsWith('local:')) {
+                const stored = user.passwordHash.slice(6);
+                const inputHash = await this._simpleHash(password);
+                if (stored !== inputHash) return { error: 'Usuario o contraseña incorrectos' };
+            } else {
+                return { error: 'Usuario o contraseña incorrectos' };
+            }
+            this._currentUser = { id: user.id, name: user.name, username: user.username, role: user.role || 'user', email: user.email || '' };
+            this.saveSession();
+            return { success: true };
+        }
+        try {
+            const res = await fetch(Sync._baseUrl + '/api/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username, password })
+            });
+            const data = await res.json();
+            if (!res.ok) return { error: data.error || 'Error en el login' };
+            this._token = data.token;
+            this._currentUser = data.user;
+            this.saveSession();
+            // Refresh users list from server
+            await this.loadFromServer();
+            return { success: true };
+        } catch (e) {
+            return { error: 'Error de conexión con el servidor' };
+        }
     },
-    logout() { this._currentUser = null; this.saveSession(); },
+    logout() { this._currentUser = null; this._token = null; this.saveSession(); },
     get user() { return this._currentUser; },
     get isLoggedIn() { return !!this._currentUser; },
     get isAdmin() { return this._currentUser?.role === 'admin'; },
 
     getUsers() {
-        return this._users.map(u => ({ id: u.id, name: u.name, username: u.username, role: u.role || 'user', createdAt: u.createdAt }));
+        // Never expose password hashes or raw passwords to the UI
+        return this._users.map(u => ({ id: u.id, name: u.name, username: u.username, role: u.role || 'user', createdAt: u.createdAt, email: u.email || '' }));
     },
     deleteUser(userId) {
         if (!this.isAdmin) return { error: 'Sin permisos' };
@@ -127,8 +211,7 @@ const Auth = {
         if (!user) return { error: 'Usuario no encontrado' };
         if (updates.name) user.name = updates.name.trim();
         if ('email' in updates) user.email = updates.email.trim();
-        if (updates.password && updates.password.length >= 4) user.password = btoa(updates.password);
-        else if (updates.password) return { error: 'Contraseña: mínimo 4 caracteres' };
+        // Password updates are only handled server-side now; ignore offline
         this.saveUsers();
         if (userId === this._currentUser.id) {
             if (updates.name) this._currentUser.name = user.name;
@@ -1482,16 +1565,13 @@ function renderAdminPanel() {
             const actionsDiv = row.querySelector('.admin-user-actions');
             actionsDiv.innerHTML = `
                 <input type="text" placeholder="Nombre" value="${escapeHtml(user.name)}" data-field="name">
-                <input type="password" placeholder="Nueva contraseña" data-field="password">
                 <button class="btn-sm btn-save" data-action="save-user" data-uid="${uid}">💾</button>
                 <button class="btn-sm btn-cancel-edit" data-action="cancel-edit">✕</button>
             `;
             actionsDiv.querySelector('[data-action="save-user"]').addEventListener('click', () => {
                 const newName = actionsDiv.querySelector('[data-field="name"]').value.trim();
-                const newPass = actionsDiv.querySelector('[data-field="password"]').value;
                 const updates = {};
                 if (newName && newName !== user.name) updates.name = newName;
-                if (newPass) updates.password = newPass;
                 if (Object.keys(updates).length > 0) {
                     const result = Auth.updateUser(uid, updates);
                     if (result.error) { alert(result.error); return; }
@@ -1535,12 +1615,12 @@ function initAuthEvents() {
     });
 
     // Login
-    $('#login-form').addEventListener('submit', (e) => {
+    $('#login-form').addEventListener('submit', async (e) => {
         e.preventDefault();
         const username = $('#login-username').value.trim();
         const password = $('#login-password').value;
         if (!username || !password) { $('#login-error').textContent = 'Rellena todos los campos'; return; }
-        const result = Auth.login(username, password);
+        const result = await Auth.login(username, password);
         if (result.error) { $('#login-error').textContent = result.error; return; }
         $('#login-username').value = ''; $('#login-password').value = ''; $('#login-error').textContent = '';
         updateAuthUI();
@@ -1548,7 +1628,7 @@ function initAuthEvents() {
     });
 
     // Register (normal user)
-    $('#register-form').addEventListener('submit', (e) => {
+    $('#register-form').addEventListener('submit', async (e) => {
         e.preventDefault();
         const name = $('#register-name').value.trim();
         const username = $('#register-username').value.trim();
@@ -1556,7 +1636,7 @@ function initAuthEvents() {
         const password2 = $('#register-password2').value;
         if (!name || !username || !password) { $('#register-error').textContent = 'Rellena todos los campos'; return; }
         if (password !== password2) { $('#register-error').textContent = 'Las contraseñas no coinciden'; return; }
-        const result = Auth.register(name, username, password, 'user');
+        const result = await Auth.register(name, username, password, 'user');
         if (result.error) { $('#register-error').textContent = result.error; return; }
         $('#register-name').value = ''; $('#register-username').value = ''; $('#register-password').value = ''; $('#register-password2').value = ''; $('#register-error').textContent = '';
         updateAuthUI();
@@ -1564,7 +1644,7 @@ function initAuthEvents() {
     });
 
     // Superuser setup (first time)
-    $('#superuser-form').addEventListener('submit', (e) => {
+    $('#superuser-form').addEventListener('submit', async (e) => {
         e.preventDefault();
         const name = $('#su-name').value.trim();
         const username = $('#su-username').value.trim();
@@ -1572,7 +1652,7 @@ function initAuthEvents() {
         const password2 = $('#su-password2').value;
         if (!name || !username || !password) { $('#su-error').textContent = 'Rellena todos los campos'; return; }
         if (password !== password2) { $('#su-error').textContent = 'Las contraseñas no coinciden'; return; }
-        const result = Auth.register(name, username, password, 'admin');
+        const result = await Auth.register(name, username, password, 'admin');
         if (result.error) { $('#su-error').textContent = result.error; return; }
         updateAuthUI();
         render();
@@ -1657,7 +1737,7 @@ function initAuthEvents() {
         openModal('modal-profile');
     });
 
-    $('#btn-save-profile').addEventListener('click', () => {
+    $('#btn-save-profile').addEventListener('click', async () => {
         const newName = $('#profile-name').value.trim();
         const newEmail = $('#profile-email').value.trim();
         const newPass = $('#profile-password').value;
@@ -1666,14 +1746,19 @@ function initAuthEvents() {
         const updates = {};
         if (newName !== Auth.user.name) updates.name = newName;
         if (newEmail !== (Auth.user.email || '')) updates.email = newEmail;
-        if (newPass) updates.password = newPass;
+        // Password updates are handled server-side only; ignore offline or send to server if needed in future
+        if (newPass) {
+            alert('El cambio de contraseña no está disponible en modo offline. Conecta al servidor para esta función.');
+            return;
+        }
 
         if (Object.keys(updates).length > 0) {
             const result = Auth.updateUser(Auth.user.id, updates);
             if (result.error) return alert(result.error);
-            Auth.user = Auth.getUsers().find(u => u.id === Auth.user.id);
+            Auth._currentUser = Auth.getUsers().find(u => u.id === Auth.user.id);
+            Auth.saveSession();
             updateAuthUI();
-            Sync.push('users', Auth._users); // Force sync
+            Auth.saveUsers(); // Force sync (strips passwords automatically)
         }
         closeModal('modal-profile');
     });

@@ -6,6 +6,7 @@ const http = require('http');
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
+const crypto = require('crypto');
 
 const PORT = 3000;
 const DATA_DIR = path.join(__dirname, 'data');
@@ -16,6 +17,58 @@ const STORE_FILE = path.join(DATA_DIR, 'store.json');
 if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
 if (!fs.existsSync(USERS_FILE)) fs.writeFileSync(USERS_FILE, '[]', 'utf8');
 if (!fs.existsSync(STORE_FILE)) fs.writeFileSync(STORE_FILE, '{"versions":[],"activeVersionId":null,"activeListId":null}', 'utf8');
+
+// ===== CRYPTO HELPERS =====
+const SALT_LENGTH = 32;
+const KEY_LENGTH = 64;
+const ITERATIONS = 100000;
+const DIGEST = 'sha512';
+
+function hashPassword(password) {
+    return new Promise((resolve, reject) => {
+        const salt = crypto.randomBytes(SALT_LENGTH).toString('hex');
+        crypto.pbkdf2(password, salt, ITERATIONS, KEY_LENGTH, DIGEST, (err, derivedKey) => {
+            if (err) return reject(err);
+            resolve(`${salt}:${derivedKey.toString('hex')}`);
+        });
+    });
+}
+
+function verifyPassword(password, storedHash) {
+    return new Promise((resolve, reject) => {
+        const [salt, hash] = storedHash.split(':');
+        if (!salt || !hash) return resolve(false);
+        crypto.pbkdf2(password, salt, ITERATIONS, KEY_LENGTH, DIGEST, (err, derivedKey) => {
+            if (err) return reject(err);
+            resolve(derivedKey.toString('hex') === hash);
+        });
+    });
+}
+
+// ===== SESSION TOKENS (in-memory) =====
+const sessions = new Map(); // token -> { userId, username, role, createdAt }
+
+function createToken(user) {
+    const token = crypto.randomBytes(32).toString('hex');
+    sessions.set(token, {
+        userId: user.id,
+        username: user.username,
+        role: user.role,
+        createdAt: Date.now()
+    });
+    return token;
+}
+
+function getSession(token) {
+    if (!token) return null;
+    return sessions.get(token) || null;
+}
+
+function requireAuth(req) {
+    const authHeader = req.headers['authorization'] || '';
+    const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
+    return getSession(token);
+}
 
 // MIME types for static files
 const MIME = {
@@ -71,7 +124,7 @@ const server = http.createServer(async (req, res) => {
     // CORS headers
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
     if (req.method === 'OPTIONS') { res.writeHead(204); res.end(); return; }
 
     const url = new URL(req.url, `http://${req.headers.host}`);
@@ -79,16 +132,122 @@ const server = http.createServer(async (req, res) => {
 
     // ===== API ROUTES =====
 
-    // GET /api/users — Read users
-    if (pathname === '/api/users' && req.method === 'GET') {
-        const data = readJSON(USERS_FILE) || [];
-        res.writeHead(200, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify(data));
+    // POST /api/register — Register new user
+    if (pathname === '/api/register' && req.method === 'POST') {
+        try {
+            const data = await parseBody(req);
+            const { name, username, password, role = 'user' } = data;
+            if (!name || !username || !password) {
+                res.writeHead(400, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ error: 'Faltan campos requeridos' }));
+                return;
+            }
+            if (password.length < 4) {
+                res.writeHead(400, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ error: 'La contraseña debe tener al menos 4 caracteres' }));
+                return;
+            }
+            const users = readJSON(USERS_FILE) || [];
+            const normalizedUsername = username.toLowerCase().trim();
+            if (users.find(u => u.username === normalizedUsername)) {
+                res.writeHead(409, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ error: 'El usuario ya existe' }));
+                return;
+            }
+            const passwordHash = await hashPassword(password);
+            const newUser = {
+                id: crypto.randomUUID(),
+                name: name.trim(),
+                username: normalizedUsername,
+                passwordHash,
+                role,
+                email: '',
+                createdAt: Date.now()
+            };
+            users.push(newUser);
+            writeJSON(USERS_FILE, users);
+            const token = createToken(newUser);
+            res.writeHead(201, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({
+                success: true,
+                token,
+                user: { id: newUser.id, name: newUser.name, username: newUser.username, role: newUser.role, email: newUser.email }
+            }));
+        } catch (e) {
+            res.writeHead(400, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ error: e.message }));
+        }
         return;
     }
 
-    // POST /api/users — Save users
+    // POST /api/login — Authenticate user
+    if (pathname === '/api/login' && req.method === 'POST') {
+        try {
+            const data = await parseBody(req);
+            const { username, password } = data;
+            if (!username || !password) {
+                res.writeHead(400, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ error: 'Faltan campos requeridos' }));
+                return;
+            }
+            const users = readJSON(USERS_FILE) || [];
+            const normalizedUsername = username.toLowerCase().trim();
+            const user = users.find(u => u.username === normalizedUsername);
+            if (!user) {
+                res.writeHead(401, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ error: 'Usuario o contraseña incorrectos' }));
+                return;
+            }
+            const valid = await verifyPassword(password, user.passwordHash);
+            if (!valid) {
+                res.writeHead(401, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ error: 'Usuario o contraseña incorrectos' }));
+                return;
+            }
+            const token = createToken(user);
+            res.writeHead(200, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({
+                success: true,
+                token,
+                user: { id: user.id, name: user.name, username: user.username, role: user.role, email: user.email || '' }
+            }));
+        } catch (e) {
+            res.writeHead(400, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ error: e.message }));
+        }
+        return;
+    }
+
+    // GET /api/me — Get current session user
+    if (pathname === '/api/me' && req.method === 'GET') {
+        const session = requireAuth(req);
+        if (!session) {
+            res.writeHead(401, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ error: 'No autorizado' }));
+            return;
+        }
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ user: session }));
+        return;
+    }
+
+    // GET /api/users — Read users (public, but no password hashes)
+    if (pathname === '/api/users' && req.method === 'GET') {
+        const users = readJSON(USERS_FILE) || [];
+        const safeUsers = users.map(u => ({ id: u.id, name: u.name, username: u.username, role: u.role, createdAt: u.createdAt, email: u.email || '' }));
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify(safeUsers));
+        return;
+    }
+
+    // POST /api/users — Save users (protected, requires auth)
     if (pathname === '/api/users' && req.method === 'POST') {
+        const session = requireAuth(req);
+        if (!session) {
+            res.writeHead(401, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ error: 'No autorizado: se requiere token de sesión' }));
+            return;
+        }
         try {
             const data = await parseBody(req);
             writeJSON(USERS_FILE, data);
@@ -109,8 +268,14 @@ const server = http.createServer(async (req, res) => {
         return;
     }
 
-    // POST /api/store — Save store data
+    // POST /api/store — Save store data (protected, requires auth)
     if (pathname === '/api/store' && req.method === 'POST') {
+        const session = requireAuth(req);
+        if (!session) {
+            res.writeHead(401, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ error: 'No autorizado: se requiere token de sesión' }));
+            return;
+        }
         try {
             const data = await parseBody(req);
             writeJSON(STORE_FILE, data);
@@ -180,9 +345,10 @@ const server = http.createServer(async (req, res) => {
 
             // Inject server data into HTML so client has it immediately
             if (filePath.endsWith('.html')) {
-                const users = readJSON(STORE_FILE.replace('store', 'users')) || [];
+                const usersRaw = readJSON(STORE_FILE.replace('store', 'users')) || [];
+                const safeUsers = usersRaw.map(u => ({ id: u.id, name: u.name, username: u.username, role: u.role, createdAt: u.createdAt, email: u.email || '' }));
                 const store = readJSON(STORE_FILE) || { versions: [], activeVersionId: null, activeListId: null };
-                const inject = `<script>window.__SERVER_DATA__=${JSON.stringify({ users, store })};</script>`;
+                const inject = `<script>window.__SERVER_DATA__=${JSON.stringify({ users: safeUsers, store })};</script>`;
                 content = content.toString().replace('</head>', inject + '\n</head>');
             }
 
