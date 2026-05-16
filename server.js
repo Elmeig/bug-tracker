@@ -95,6 +95,52 @@ function writeJSON(filePath, data) {
     fs.writeFileSync(filePath, JSON.stringify(data, null, 2), 'utf8');
 }
 
+// === WRITE MUTEX — prevents race conditions ===
+let _writeQueue = Promise.resolve();
+function atomicWrite(filePath, data) {
+    _writeQueue = _writeQueue.then(() => {
+        return new Promise((resolve, reject) => {
+            try {
+                backupBeforeWrite(filePath);
+                writeJSON(filePath, data);
+                resolve();
+            } catch (e) { reject(e); }
+        });
+    });
+    return _writeQueue;
+}
+
+// === AUTO-BACKUP — max 50 copies in data/backups/ ===
+const BACKUP_DIR = path.join(__dirname, 'data', 'backups');
+function backupBeforeWrite(filePath) {
+    try {
+        if (!fs.existsSync(BACKUP_DIR)) fs.mkdirSync(BACKUP_DIR, { recursive: true });
+        if (fs.existsSync(filePath)) {
+            const ts = new Date().toISOString().replace(/[:.]/g, '-');
+            const base = path.basename(filePath).replace('.json', '');
+            const backupFile = path.join(BACKUP_DIR, base + '_' + ts + '.json');
+            fs.copyFileSync(filePath, backupFile);
+            const files = fs.readdirSync(BACKUP_DIR).filter(f => f.endsWith('.json')).sort();
+            while (files.length > 50) {
+                fs.unlinkSync(path.join(BACKUP_DIR, files.shift()));
+            }
+        }
+    } catch (_) { /* best-effort */ }
+}
+
+// === SPLIT STORE — one file per version ===
+function getVersionFile(versionId) {
+    return path.join(__dirname, 'data', 'v_' + versionId + '.json');
+}
+
+function readVersion(versionId) {
+    return readJSON(getVersionFile(versionId)) || { lists: [] };
+}
+
+function writeVersionData(versionId, data) {
+    atomicWrite(getVersionFile(versionId), data);
+}
+
 function parseBody(req) {
     return new Promise((resolve, reject) => {
         let body = '';
@@ -357,11 +403,16 @@ const server = http.createServer(async (req, res) => {
         return;
     }
 
-    // GET /api/store
+    // GET /api/store — reassemble from split files
     if (pathname === '/api/store' && req.method === 'GET') {
-        const data = readJSON(STORE_FILE) || { versions: [], activeVersionId: null, activeListId: null };
+        const meta = readJSON(STORE_FILE) || { versions: [], activeVersionId: null, activeListId: null };
+        // Load each version's data from its own file
+        for (const v of meta.versions) {
+            const vData = readVersion(v.id);
+            v.lists = vData.lists || [];
+        }
         res.writeHead(200, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify(data));
+        res.end(JSON.stringify(meta));
         return;
     }
 
@@ -377,7 +428,7 @@ const server = http.createServer(async (req, res) => {
             console.log('[Notify] POST /api/store recibido de', session.username);
             const data = await parseBody(req);
             const oldStore = readJSON(STORE_FILE);
-            writeJSON(STORE_FILE, data);
+            // (split save happens after notifications below)
             console.log('[Notify] oldStore:', !!oldStore, '| versions:', !!(data && data.versions));
             // Detect changes and send notifications
             if (oldStore && data.versions && Array.isArray(oldStore.versions)) {
@@ -614,6 +665,16 @@ const server = http.createServer(async (req, res) => {
                 console.log('[Notify] Skipping - oldStore:', !!oldStore, 'data.versions:', !!(data && data.versions), 'isArray:', !!(oldStore && Array.isArray(oldStore.versions)));
             }
 
+            // Save split version files (scalability)
+            if (data.versions) {
+                const meta = { versions: [], activeVersionId: data.activeVersionId, activeListId: data.activeListId };
+                for (const v of data.versions) {
+                    writeVersionData(v.id, { lists: v.lists });
+                    meta.versions.push({ id: v.id, name: v.name });
+                }
+                atomicWrite(STORE_FILE, meta);
+            }
+
             res.writeHead(200, { 'Content-Type': 'application/json' });
             res.end(JSON.stringify({ ok: true }));
         } catch (e) {
@@ -675,7 +736,7 @@ const server = http.createServer(async (req, res) => {
                 bug.followers = bug.followers.filter(f => f !== targetUser);
             }
 
-            writeJSON(STORE_FILE, store);
+            atomicWrite(STORE_FILE, store);
             res.writeHead(200, { 'Content-Type': 'application/json' });
             res.end(JSON.stringify({ ok: true, followers: bug.followers }));
         } catch (e) {
@@ -746,7 +807,15 @@ const server = http.createServer(async (req, res) => {
                 res.end(JSON.stringify({ error: 'Formato de backup inválido' }));
                 return;
             }
-            writeJSON(STORE_FILE, data.store);
+            // Save store atomically via split files
+            if (data.store && data.store.versions) {
+                const meta = { versions: [], activeVersionId: data.store.activeVersionId, activeListId: data.store.activeListId };
+                for (const v of data.store.versions) {
+                    writeVersionData(v.id, { lists: v.lists });
+                    meta.versions.push({ id: v.id, name: v.name });
+                }
+                atomicWrite(STORE_FILE, meta);
+            }
             writeJSON(USERS_FILE, data.users);
             res.writeHead(200, { 'Content-Type': 'application/json' });
             res.end(JSON.stringify({ ok: true }));
@@ -816,7 +885,7 @@ const server = http.createServer(async (req, res) => {
                 res.end(JSON.stringify({ error: 'Bug no encontrado' }));
                 return;
             }
-            writeJSON(STORE_FILE, store);
+            atomicWrite(STORE_FILE, store);
             res.writeHead(200, { 'Content-Type': 'application/json' });
             res.end(JSON.stringify({ ok: true }));
         } catch (e) {
@@ -853,6 +922,21 @@ const server = http.createServer(async (req, res) => {
         res.writeHead(404); res.end('Not Found');
     }
 });
+
+// === MIGRATION: Split store.json into per-version files on startup ===
+(async function migrateStore() {
+    const store = readJSON(STORE_FILE) || {};
+    if (store.versions && store.versions.length > 0 && store.versions[0].lists && store.versions[0].lists[0] && store.versions[0].lists[0].bugs) {
+        console.log('[Migrate] Splitting store.json into per-version files...');
+        const migrated = { versions: [], activeVersionId: store.activeVersionId, activeListId: store.activeListId };
+        for (const v of store.versions) {
+            await atomicWrite(getVersionFile(v.id), { lists: v.lists });
+            migrated.versions.push({ id: v.id, name: v.name });
+        }
+        writeJSON(STORE_FILE, migrated);
+        console.log('[Migrate] OK — ' + migrated.versions.length + ' version(s) migrated to data/v_*.json');
+    }
+})();
 
 server.listen(PORT, '0.0.0.0', () => {
     const ip = getLocalIP();
