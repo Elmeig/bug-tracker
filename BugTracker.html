@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
         rel="stylesheet">
-    <link rel="stylesheet" href="styles.css?v=2.8">
+    <link rel="stylesheet" href="styles.css?v=3.0">
 </head>
 <body>
     <!-- Ambient background -->
@@ -666,6 +666,10 @@
                 <label for="profile-password">Nueva Contraseña (opcional)</label>
                 <input type="password" id="profile-password" placeholder="Dejar en blanco para no cambiar">
             </div>
+            <div class="form-group" style="display:flex;align-items:center;gap:0.5rem">
+                <input type="checkbox" id="profile-notifications" style="width:auto;accent-color:var(--primary)">
+                <label for="profile-notifications" style="margin:0;font-size:0.82rem">Recibir notificaciones por correo</label>
+            </div>
             <div class="modal-actions" style="display:flex; gap:0.6rem; margin-top: 1.5rem;">
                 <button class="btn-secondary modal-close" style="flex:1; justify-content:center;">Cancelar</button>
                 <button class="btn-primary" id="btn-save-profile" style="flex:1; justify-content:center;">Guardar</button>
@@ -675,7 +679,7 @@
 
     <input type="file" id="restore-file-input" accept=".json" style="display:none">
 
-    <script src="app.js?v=2.9"></script>
+    <script src="app.js?v=3.0"></script>
     </body>
 
 </html>

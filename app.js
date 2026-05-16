@@ -211,11 +211,13 @@ const Auth = {
         if (!user) return { error: 'Usuario no encontrado' };
         if (updates.name) user.name = updates.name.trim();
         if ('email' in updates) user.email = updates.email.trim();
+        if ('notifications' in updates) user.notifications = updates.notifications;
         // Password updates are only handled server-side now; ignore offline
         this.saveUsers();
         if (userId === this._currentUser.id) {
             if (updates.name) this._currentUser.name = user.name;
             if ('email' in updates) this._currentUser.email = user.email;
+            if ('notifications' in updates) this._currentUser.notifications = user.notifications;
             this.saveSession();
         }
         return { success: true };
@@ -1754,6 +1756,7 @@ function initAuthEvents() {
         $('#profile-name').value = Auth.user.name;
         $('#profile-email').value = Auth.user.email || '';
         $('#profile-password').value = '';
+        $('#profile-notifications').checked = Auth.user?.notifications !== false;
         openModal('modal-profile');
     });
 
@@ -1766,6 +1769,8 @@ function initAuthEvents() {
         const updates = {};
         if (newName !== Auth.user.name) updates.name = newName;
         if (newEmail !== (Auth.user.email || '')) updates.email = newEmail;
+        const newNotifications = $('#profile-notifications').checked;
+        if (newNotifications !== (Auth.user.notifications !== false)) updates.notifications = newNotifications;
         // Password updates are handled server-side only; ignore offline or send to server if needed in future
         if (newPass) {
             alert('El cambio de contraseña no está disponible en modo offline. Conecta al servidor para esta función.');
@@ -1776,6 +1781,7 @@ function initAuthEvents() {
             const result = Auth.updateUser(Auth.user.id, updates);
             if (result.error) return alert(result.error);
             Auth._currentUser = Auth.getUsers().find(u => u.id === Auth.user.id);
+            if ('notifications' in updates) Auth._currentUser.notifications = updates.notifications;
             Auth.saveSession();
             updateAuthUI();
             Auth.saveUsers(); // Force sync (strips passwords automatically)

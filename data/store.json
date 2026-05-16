@@ -16,14 +16,14 @@
               "description": "Si el cut depth de la pasada de desbaste torico es mas grande que la max oscil #29 = 0, lo cual hace que no se deje material para la pasada de desbaste",
               "priority": "medium",
               "status": "new",
-              "assignee": "",
+              "assignee": "Mehdi",
               "client": "REM",
               "swVersion": "15.3.2.0",
               "createdBy": "Mehdi",
               "createdByUser": "mehdi",
               "comments": [],
               "createdAt": 1778844006773,
-              "updatedAt": 1778919170757
+              "updatedAt": 1778956400519
             }
           ],
           "createdAt": 1778838504328
@@ -160,6 +160,29 @@
               "comments": [],
               "createdAt": 1778854995338,
               "updatedAt": 1778918987233
+            },
+            {
+              "id": "750ce6c5-c717-4c70-8991-f10d099bf6aa",
+              "createdBy": "Mehdi",
+              "createdByUser": "mehdi",
+              "title": "Front espejado si ASG izquierdas",
+              "description": "El ASG (Triamec)en ambos tornos tiene dos herramientas a izquierdas y uno a derechas. Para que los fronts salgan bien de momento usan la herramienta a derechas. Tiene instalada una versión Framework porque no fuimos capaces de instalar Netcore top top top",
+              "priority": "high",
+              "status": "in-progress",
+              "assignee": "Álvaro",
+              "client": "Oculenti",
+              "swVersion": "14.5.38.0",
+              "comments": [
+                {
+                  "id": "fade0d72-9184-456f-bd51-16eb9d7ab9f2",
+                  "text": "Hay una versión que corrige el fallo. 15.3.10",
+                  "author": "Mehdi",
+                  "authorUser": "mehdi",
+                  "createdAt": 1778956370107
+                }
+              ],
+              "createdAt": 1778951724014,
+              "updatedAt": 1778956899649
             }
           ],
           "createdAt": 1778848227972
@@ -172,7 +195,7 @@
             {
               "id": "e95361ea-139e-413f-a3a2-fccf972534ec",
               "title": "Modificar editar la tabla excel",
-              "description": "Quieren poder editar las tablas de Excel desde una orden abierta en la pantalla de Auto. Actualmente lo pueden hacer en la versión 7.0.0.142",
+              "description": "Quieren poder editar las tablas de Excel desde una orden abierta en la pantalla de Auto. Actualmente lo pueden hacer en la versión 7.0.0.142. Ver si es posible tener la opción en una versión actualizada",
               "priority": "low",
               "status": "new",
               "assignee": "",
@@ -182,12 +205,12 @@
               "createdByUser": "mehdi",
               "comments": [],
               "createdAt": 1778851419039,
-              "updatedAt": 1778919027427
+              "updatedAt": 1778956513179
             },
             {
               "id": "e9418b65-ce40-4194-87bb-532af2da43da",
               "title": "Cargar-unir bases de datos",
-              "description": "Les gustara poder cargar una base de datos sin machacar la que hay en ese momento",
+              "description": "Les gustara poder cargar una base de datos sin machacar la que hay en ese momento.",
               "priority": "low",
               "status": "new",
               "assignee": "",
@@ -195,9 +218,17 @@
               "swVersion": "15.2.10.0",
               "createdBy": "Mehdi",
               "createdByUser": "mehdi",
-              "comments": [],
+              "comments": [
+                {
+                  "id": "c3549d3d-88d4-40eb-ae8e-13fde03d2ba8",
+                  "text": "Falta confirmar si es posible o no",
+                  "author": "Mehdi",
+                  "authorUser": "mehdi",
+                  "createdAt": 1778955608178
+                }
+              ],
               "createdAt": 1778851634262,
-              "updatedAt": 1778919040419
+              "updatedAt": 1778955608178
             }
           ],
           "createdAt": 1778851074726
@@ -266,9 +297,39 @@
               "comments": [],
               "createdAt": 1778855111939,
               "updatedAt": 1778918968285
+            },
+            {
+              "id": "55d16b2f-2be2-4b92-b4ae-2892454fcb38",
+              "createdBy": "Mehdi",
+              "createdByUser": "mehdi",
+              "title": "Actualizar ASG a Triamec",
+              "description": "El torno 037 actualizado a R400, Marcelo montó el ASG con calibración de altura automática. Ahora falta cambiar el driver W de Mitsubishi a Triamec. Además hay que revisar los dos R300",
+              "priority": "medium",
+              "status": "new",
+              "assignee": "Marcelo, Mehdi",
+              "client": "Gperm",
+              "swVersion": "",
+              "comments": [
+                {
+                  "id": "3c70d6ab-2d0c-42e6-9029-aa5768ffe53f",
+                  "text": "Se prevé que vayamos Marcelo y yo la semana del 1 de mayo",
+                  "author": "Mehdi",
+                  "authorUser": "mehdi",
+                  "createdAt": 1778954145493
+                }
+              ],
+              "createdAt": 1778953372183,
+              "updatedAt": 1778954252092
             }
           ],
           "createdAt": 1778851749391
+        },
+        {
+          "id": "b661dfc1-da2a-49df-89f9-a5cb9ca1ae3e",
+          "name": "Test",
+          "color": "#6366f1",
+          "bugs": [],
+          "createdAt": 1778959415600
         }
       ],
       "createdAt": 1778838211309
