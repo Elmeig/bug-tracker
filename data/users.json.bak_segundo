@@ -1,0 +1,18 @@
+[
+  {
+    "id": "59f2b2de-148b-47bc-8601-8dbeadb4e0e1",
+    "name": "Administrador",
+    "username": "admin",
+    "role": "admin",
+    "createdAt": 1778926005140,
+    "email": ""
+  },
+  {
+    "id": "2d88e0cf-1bea-46b5-8985-75a39e43566b",
+    "name": "Mehdi",
+    "username": "mehdi",
+    "role": "user",
+    "createdAt": 1778926076603,
+    "email": "mehdi@remvt.com"
+  }
+]

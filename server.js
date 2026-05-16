@@ -7,9 +7,9 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 const crypto = require('crypto');
+const nodemailer = require('nodemailer');
 
 const PORT = 3000;
-const RESEND_API_KEY = process.env.RESEND_API_KEY;
 const DATA_DIR = path.join(__dirname, 'data');
 const USERS_FILE = path.join(DATA_DIR, 'users.json');
 const STORE_FILE = path.join(DATA_DIR, 'store.json');
@@ -112,35 +112,30 @@ function parseBody(req) {
 }
 
 // Get local network IP
-// ===== EMAIL (Resend API, no dependencies) =====
+// ===== EMAIL (Nodemailer + Gmail) =====
 async function sendEmail(to, subject, text, attachmentStr) {
-    const body = {
-        from: 'onboarding@resend.dev',
+    const transporter = nodemailer.createTransport({
+        service: 'gmail',
+        auth: {
+            user: process.env.GMAIL_USER,
+            pass: process.env.GMAIL_PASS
+        }
+    });
+
+    const info = await transporter.sendMail({
+        from: `"Bug Tracker" <${process.env.GMAIL_USER}>`,
         to,
         subject,
         text,
         attachments: [
             {
                 filename: 'backup.json',
-                content: Buffer.from(attachmentStr).toString('base64')
+                content: Buffer.from(attachmentStr)
             }
         ]
-    };
-
-    const res = await fetch('https://api.resend.com/emails', {
-        method: 'POST',
-        headers: {
-            'Authorization': `Bearer ${RESEND_API_KEY}`,
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(body)
     });
 
-    if (!res.ok) {
-        const err = await res.text();
-        throw new Error(`Resend API error ${res.status}: ${err}`);
-    }
-    return res.json();
+    return info;
 }
 
 function getLocalIP() {
@@ -284,8 +279,16 @@ const server = http.createServer(async (req, res) => {
             return;
         }
         try {
-            const data = await parseBody(req);
-            writeJSON(USERS_FILE, data);
+            const incomingUsers = await parseBody(req);
+            const existingUsers = readJSON(USERS_FILE) || [];
+            const mergedUsers = incomingUsers.map(incoming => {
+                const existing = existingUsers.find(u => u.id === incoming.id);
+                if (existing && existing.passwordHash) {
+                    incoming.passwordHash = existing.passwordHash;
+                }
+                return incoming;
+            });
+            writeJSON(USERS_FILE, mergedUsers);
             res.writeHead(200, { 'Content-Type': 'application/json' });
             res.end(JSON.stringify({ ok: true }));
         } catch (e) {
@@ -348,9 +351,9 @@ const server = http.createServer(async (req, res) => {
         };
         const backupStr = JSON.stringify(backup, null, 2);
         try {
-            if (!RESEND_API_KEY) {
+            if (!process.env.GMAIL_USER || !process.env.GMAIL_PASS) {
                 res.writeHead(500, { 'Content-Type': 'application/json' });
-                res.end(JSON.stringify({ error: 'RESEND_API_KEY no configurada en el servidor' }));
+                res.end(JSON.stringify({ error: 'GMAIL_USER o GMAIL_PASS no configuradas en el servidor' }));
                 return;
             }
             await sendEmail(user.email, 'Backup Bug Tracker', 'Adjunto encontrarás tu backup de Bug Tracker.', backupStr);
