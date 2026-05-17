@@ -1660,8 +1660,11 @@ function renderFollowersSection(bug) {
         </div>
     `;
     
-    // Insert after comments section
-    if (commentsList.parentNode) {
+    // Insert at the end of the detail sidebar, after the comment form
+    const sidebar = document.querySelector('.detail-sidebar');
+    if (sidebar) {
+        sidebar.appendChild(section);
+    } else if (commentsList.parentNode) {
         commentsList.parentNode.insertBefore(section, commentsList.nextSibling);
     }
     

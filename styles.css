@@ -648,7 +648,8 @@ body {
 .comment-header { display: flex; align-items: center; gap: 0.6rem; margin-bottom: 0.25rem; }
 
 /* ===== FOLLOWERS SECTION ===== */
-.followers-section { margin-top: 2.5rem; padding-top: 2.5rem; border-top: 1px solid var(--border); }
+.followers-section { margin-top: 2rem; padding-top: 1.5rem; border-top: 2px solid var(--border); }
+.detail-sidebar .followers-section .followers-header { font-size: 0.8rem; font-weight: 700; margin-bottom: 0.6rem; color: var(--text-secondary); }
 .followers-header { font-weight: 600; margin-bottom: 0.5rem; font-size: 0.85rem; color: var(--text-primary); }
 .followers-list { display: flex; flex-wrap: wrap; gap: 0.25rem; margin-bottom: 0.5rem; }
 .follower-tag { display: inline-flex; align-items: center; gap: 0.3rem; background: var(--bg-secondary); padding: 0.2rem 0.5rem; border-radius: 12px; font-size: 0.75rem; color: var(--text-primary); }
