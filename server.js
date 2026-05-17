@@ -46,6 +46,18 @@ function verifyPassword(password, storedHash) {
     });
 }
 
+// ===== UNFOLLOW TOKEN HELPERS =====
+const UNFOLLOW_SECRET = process.env.UNFOLLOW_SECRET || 'bugtracker-unfollow-secret-key-v1';
+
+function generateUnsubscribeToken(userId, bugId) {
+    return crypto.createHmac('sha256', UNFOLLOW_SECRET).update(userId + ':' + bugId).digest('hex');
+}
+
+function verifyUnsubscribeToken(userId, bugId, token) {
+    const expected = generateUnsubscribeToken(userId, bugId);
+    return expected === token;
+}
+
 // ===== SESSION TOKENS (in-memory) =====
 const sessions = new Map();
 
@@ -604,6 +616,16 @@ const server = http.createServer(async (req, res) => {
                         changeDescriptions + '\\n\\n\ud83d\udd17 Revisa en: https://bugtracker.tail51f3b0.ts.net';
                     const html = toHtml(text);
 
+                                        // Determine bugId for unsubscribe link (use first changed bug)
+                    let bugIdForEmail = null;
+                    for (const c of changed) {
+                        if (c.entry && c.entry.bug && c.entry.bug.id) {
+                            bugIdForEmail = c.entry.bug.id;
+                            break;
+                        }
+                    }
+                    if (!bugIdForEmail) bugIdForEmail = '';
+
                     // Collect recipients: super user + subscribers + assignees + managers + followers
                     const recipients = new Map(); // email -> user object
 
@@ -656,9 +678,14 @@ const server = http.createServer(async (req, res) => {
                     let sentCount = 0;
                     for (const [email, user] of recipients) {
                         try {
+                            // Build personalized unsubscribe link for this recipient and this bug
+                            const unfollowToken = generateUnsubscribeToken(user.id, bugIdForEmail);
+                            const unfollowLink = 'https://bugtracker.tail51f3b0.ts.net/api/bugs/' + encodeURIComponent(bugIdForEmail) + '/unsubscribe?userId=' + encodeURIComponent(user.id) + '&token=' + unfollowToken;
+                            // Augment HTML with unsubscribe footer
+                            let emailHtml = html + '<br><hr style="border:none;border-top:1px solid #ddd;margin:20px 0"><p style="font-size:12px;color:#999;font-family:Arial,sans-serif;"><a href="' + unfollowLink + '" style="color:#6366f1;">Dejar de recibir notificaciones sobre esta tarea</a></p>';
                             await sendEmail(email,
                                 '[Bug Tracker] ' + changed.length + ' cambio(s) de ' + authorName,
-                                text, null, html
+                                text, null, emailHtml
                             );
                             sentCount++;
                             console.log('[Notify] Sent to', email, '(' + user.name + ')');
@@ -754,6 +781,109 @@ const server = http.createServer(async (req, res) => {
         } catch (e) {
             res.writeHead(400, { 'Content-Type': 'application/json' });
             res.end(JSON.stringify({ error: e.message }));
+        }
+        return;
+    }
+
+    // GET /api/bugs/:bugId/unsubscribe — Unfollow from email link (no auth required)
+    if (pathname.startsWith('/api/bugs/') && pathname.endsWith('/unsubscribe') && req.method === 'GET') {
+        const bugId = pathname.split('/')[3];
+        const userId = url.searchParams.get('userId');
+        const token = url.searchParams.get('token');
+
+        if (!userId || !token) {
+            res.writeHead(400, { 'Content-Type': 'text/html' });
+            res.end('<html><body><h2>❌ Error: Faltan parámetros (userId y token)</h2></body></html>');
+            return;
+        }
+
+        const store = readJSON(STORE_FILE);
+        if (!store || !store.versions) {
+            res.writeHead(404, { 'Content-Type': 'text/html' });
+            res.end('<html><body><h2>❌ Error: No se encontró la base de datos</h2></body></html>');
+            return;
+        }
+
+        // Load versions
+        for (const v of store.versions) {
+            const vData = readVersion(v.id);
+            v.lists = vData.lists || [];
+        }
+
+        let bug = null;
+        let bugTitle = 'esta tarea';
+        for (const v of store.versions) {
+            for (const l of v.lists) {
+                bug = l.bugs.find(b => b.id === bugId);
+                if (bug) {
+                    bugTitle = bug.title || 'esta tarea';
+                    break;
+                }
+            }
+            if (bug) break;
+        }
+
+        if (!bug) {
+            res.writeHead(404, { 'Content-Type': 'text/html' });
+            res.end('<html><body><h2>❌ Error: Tarea no encontrada</h2></body></html>');
+            return;
+        }
+
+        // Verify token
+        if (!verifyUnsubscribeToken(userId, bugId, token)) {
+            res.writeHead(403, { 'Content-Type': 'text/html' });
+            res.end('<html><body><h2>❌ Error: Token inválido o expirado</h2></body></html>');
+            return;
+        }
+
+        // Find user
+        const users = readJSON(USERS_FILE) || [];
+        const user = users.find(u => u.id === userId);
+        if (!user) {
+            res.writeHead(404, { 'Content-Type': 'text/html' });
+            res.end('<html><body><h2>❌ Error: Usuario no encontrado</h2></body></html>');
+            return;
+        }
+
+        // Remove user from followers
+        if (!bug.followers) bug.followers = [];
+        const username = user.username.toLowerCase();
+        if (bug.followers.includes(username)) {
+            bug.followers = bug.followers.filter(f => f !== username);
+            atomicWrite(STORE_FILE, store);
+            res.writeHead(200, { 'Content-Type': 'text/html' });
+            res.end(
+                '<!DOCTYPE html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">' +
+                '<title>Suscripción cancelada</title>' +
+                '<style>body{font-family:Arial,sans-serif;max-width:600px;margin:60px auto;padding:20px;text-align:center;background:#f9f9f9;}' +
+                '.card{background:#fff;border-radius:12px;padding:40px 30px;box-shadow:0 2px 8px rgba(0,0,0,0.08);}' +
+                '.icon{font-size:64px;margin-bottom:16px;}' +
+                'h1{color:#333;font-size:22px;margin:0 0 8px;}' +
+                'p{color:#666;font-size:16px;margin:0;}</style></head><body>' +
+                '<div class="card">' +
+                '<div class="icon">✅</div>' +
+                '<h1>Has dejado de recibir notificaciones</h1>' +
+                '<p>No recibirás más alertas sobre: <strong>' + bugTitle.replace(/</g,'&lt;').replace(/>/g,'&gt;') + '</strong></p>' +
+                '<p style="margin-top:16px;font-size:14px;color:#999;">Puedes volver a seguir esta tarea desde la aplicación.</p>' +
+                '</div></body></html>'
+            );
+        } else {
+            res.writeHead(200, { 'Content-Type': 'text/html' });
+            res.end(
+                '<!DOCTYPE html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">' +
+                '<title>Ya no sigues esta tarea</title>' +
+                '<style>body{font-family:Arial,sans-serif;max-width:600px;margin:60px auto;padding:20px;text-align:center;background:#f9f9f9;}' +
+                '.card{background:#fff;border-radius:12px;padding:40px 30px;box-shadow:0 2px 8px rgba(0,0,0,0.08);}' +
+                '.icon{font-size:64px;margin-bottom:16px;}' +
+                'h1{color:#333;font-size:22px;margin:0 0 8px;}' +
+                'p{color:#666;font-size:16px;margin:0;}</style></head><body>' +
+                '<div class="card">' +
+                '<div class="icon">ℹ️</div>' +
+                '<h1>Ya no sigues esta tarea</h1>' +
+                '<p><strong>' + user.name.replace(/</g,'&lt;').replace(/>/g,'&gt;') + '</strong> no estaba siguiendo <strong>' + bugTitle.replace(/</g,'&lt;').replace(/>/g,'&gt;') + '</strong>.</p>' +
+                '<p style="margin-top:16px;font-size:14px;color:#999;">No se ha realizado ningún cambio.</p>' +
+                '</div></body></html>'
+            );
         }
         return;
     }
