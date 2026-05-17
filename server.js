@@ -432,6 +432,13 @@ const server = http.createServer(async (req, res) => {
             console.log('[Notify] oldStore:', !!oldStore, '| versions:', !!(data && data.versions));
             // Detect changes and send notifications
             if (oldStore && data.versions && Array.isArray(oldStore.versions)) {
+                // Load lists from individual v_*.json files for oldStore (split store)
+                if (oldStore.versions) {
+                    for (const ov of oldStore.versions) {
+                        const ovData = readVersion(ov.id);
+                        ov.lists = ovData.lists || [];
+                    }
+                }
                 const oldBugs = {};     // key -> { bug, listName, versionName }
                 const newBugs = {};     // key -> { bug, listName, versionName }
                 // Detect new lists
@@ -703,6 +710,11 @@ const server = http.createServer(async (req, res) => {
                 res.end(JSON.stringify({ error: 'Bug no encontrado' }));
                 return;
             }
+            // Load each version's lists from its individual v_*.json file
+            for (const v of store.versions) {
+                const vData = readVersion(v.id);
+                v.lists = vData.lists || [];
+            }
             let bug = null;
             for (const v of store.versions) {
                 for (const l of v.lists) {
@@ -846,6 +858,11 @@ const server = http.createServer(async (req, res) => {
                 res.writeHead(404, { 'Content-Type': 'application/json' });
                 res.end(JSON.stringify({ error: 'Bug no encontrado' }));
                 return;
+            }
+            // Load each version's lists from its individual v_*.json file
+            for (const v of store.versions) {
+                const vData = readVersion(v.id);
+                v.lists = vData.lists || [];
             }
             // Find the comment
             let found = false;
