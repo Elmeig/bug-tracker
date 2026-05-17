@@ -655,7 +655,14 @@ const server = http.createServer(async (req, res) => {
 
                     // === NEW: Managers — reciben notificaciones de CUALQUIER cambio (como el admin) ===
                     const managers = users.filter(u => u.role === 'manager' && u.email && u.email.trim() && u.id !== session.userId);
-                    managers.forEach(m => recipients.set(m.email, m));
+                    managers.forEach(m => {
+                        // Skip if this manager has muted any of the changed bugs
+                        const isMuted = changed.some(c => {
+                            const b = c.type === 'new_list' ? null : c.entry?.bug;
+                            return b && b.mutedManagers && b.mutedManagers.includes(m.id);
+                        });
+                        if (!isMuted) recipients.set(m.email, m);
+                    });
 
                     // === NEW: Followers — reciben notificaciones de cualquier cambio en ESA tarea ===
                     changed.forEach(c => {
@@ -845,11 +852,27 @@ const server = http.createServer(async (req, res) => {
             return;
         }
 
-        // Remove user from followers
-        if (!bug.followers) bug.followers = [];
-        const username = user.username.toLowerCase();
-        if (bug.followers.includes(username)) {
-            bug.followers = bug.followers.filter(f => f !== username);
+        // Remove user from followers OR mute manager
+        let wasAffected = false;
+
+        if (user.role === 'manager') {
+            // Manager: add to mutedManagers so they won't get notifications for this bug
+            if (!bug.mutedManagers) bug.mutedManagers = [];
+            if (!bug.mutedManagers.includes(userId)) {
+                bug.mutedManagers.push(userId);
+                wasAffected = true;
+            }
+        } else {
+            // Regular user: remove followers
+            if (!bug.followers) bug.followers = [];
+            const username = user.username.toLowerCase();
+            if (bug.followers.includes(username)) {
+                bug.followers = bug.followers.filter(f => f !== username);
+                wasAffected = true;
+            }
+        }
+
+        if (wasAffected) {
             atomicWrite(STORE_FILE, store);
             res.writeHead(200, { 'Content-Type': 'text/html' });
             res.end(
