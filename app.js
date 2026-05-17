@@ -1163,24 +1163,18 @@ function generateReport() {
     if (status) bugs = bugs.filter(b => b.status === status);
     if (!includeResolved) bugs = bugs.filter(b => !b.resolvedBy);
 
-    // Sort: unresolved first, then resolved at the end
-    // Within unresolved: priority → status → date (oldest first)
-    // 1) Priority: critical > high > medium > low
-    // 2) Status: in-progress > new > passed
+    // Sort order for reports:
+    // 1) Status: new (0) → in-progress (1) → resolved/passed (2)
+    // 2) Priority: critical (0) → high (1) → medium (2) → low (3)
     // 3) Date: oldest first
     const pOrder = { critical: 0, high: 1, medium: 2, low: 3 };
-    const sOrder = { 'in-progress': 0, 'new': 1, 'passed': 2, 'failed': 3 };
     bugs.sort((a, b) => {
-        // Resolved always last
-        const aResolved = a.resolvedBy ? 1 : 0;
-        const bResolved = b.resolvedBy ? 1 : 0;
-        if (aResolved !== bResolved) return aResolved - bResolved;
+        const sa = a.resolvedBy ? 2 : a.status === 'new' ? 0 : 1;
+        const sb = b.resolvedBy ? 2 : b.status === 'new' ? 0 : 1;
+        if (sa !== sb) return sa - sb;
         const pa = pOrder[a.priority] ?? 9;
         const pb = pOrder[b.priority] ?? 9;
         if (pa !== pb) return pa - pb;
-        const sa = sOrder[a.status] ?? 9;
-        const sb = sOrder[b.status] ?? 9;
-        if (sa !== sb) return sa - sb;
         return (a.createdAt || 0) - (b.createdAt || 0);
     });
 
