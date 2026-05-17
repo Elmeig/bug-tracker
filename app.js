@@ -995,8 +995,7 @@ async function saveEditComment(commentId) {
         });
         const result = await res.json();
         if (result.ok) {
-            await Sync.pull('store', 'bugtracker_data');
-            Store.load();
+            await Store.loadFromServer();
             const refreshed = Store.getBug(
                 currentDetailVersionId || Store.data.activeVersionId,
                 currentDetailListId || Store.data.activeListId,
