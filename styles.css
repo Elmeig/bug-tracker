@@ -173,6 +173,11 @@ body {
     padding-right: 0.8rem; border-right: 1px solid var(--border);
     order: 3;
 }
+/* Profile modal readability fixes for light theme */
+[data-theme="light"] #modal-profile #profile-info-text { color: #444 !important; }
+[data-theme="light"] #modal-profile .form-group label { color: #222 !important; }
+[data-theme="light"] #modal-profile .form-group input[type="checkbox"] + label { color: #222 !important; }
+
 @media (max-width: 768px) { .stats-bar { width: 100%; border-right: none; padding-right: 0; justify-content: center; } }
 .stat {
     display: flex; align-items: center; gap: 0.35rem;
