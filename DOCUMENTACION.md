@@ -16,7 +16,9 @@
    - [Fase 3: Sistema de Notificaciones por Correo](#fase-3-sistema-de-notificaciones-por-correo)
    - [Fase 4: Edición de Comentarios](#fase-4-edición-de-comentarios)
    - [Fase 5: Corrupción de app.js Restaurado](#fase-5-corrupción-de-appjs-restaurado)
-4. [🛑 Errores y Lecciones Aprendidas](#4-errores-y-lecciones-aprendidas)
+   - [Fase 6: Rol Manager + Sistema de Followers](#fase-6-rol-manager--sistema-de-followers)
+   - [Fase 7: Split Store Architecture + Login Fix](#fase-7-split-store-architecture--login-fix)
+ 4. [🛑 Errores y Lecciones Aprendidas](#4-errores-y-lecciones-aprendidas)
    - [Error 1: Migración de hash rompió usuarios existentes](#error-1-migración-de-hash-rompió-usuarios-existentes)
    - [Error 2: Resend API — Sandbox Restriction](#error-2-resend-api--sandbox-restriction)
    - [Error 3: Gmail SMTP — Less Secure Apps bloqueado](#error-3-gmail-smtp--less-secure-apps-bloqueado)
@@ -29,6 +31,8 @@
    - [Error 10: CRÍTICO — app.js truncado a 1198 líneas](#error-10-crítico--appjs-truncado-a-1198-líneas)
    - [Error 11: render() destruye la ventana de detalle](#error-11-render-destruye-la-ventana-de-detalle)
    - [Error 12: app.js restaurado vacío desde Git](#error-12-appjs-restaurado-vacío-desde-git)
+   - [Error 17: v.lists is not iterable (split store)](#error-17-vlists-is-not-iterable-split-store)
+   - [Error 18: Login falla por token no guardado en localStorage](#error-18-login-falla-por-token-no-guardado-en-localstorage)
 5. [Configuración SMTP](#5-configuración-smtp)
 6. [API Endpoints](#6-api-endpoints)
 7. [Sistema de Notificaciones](#7-sistema-de-notificaciones)
@@ -62,7 +66,7 @@
 | Email | Nodemailer (única dependencia externa) |
 | Frontend | Vanilla JavaScript ES6+ (SPA, sin frameworks) |
 | Estilos | CSS3 (variables, tema oscuro) |
-| Datos | Archivos JSON planos (`data/store.json`, `data/users.json`) |
+| Datos | Archivos JSON planos (`data/v_*.json`, `data/users.json`) |
 
 ---
 
@@ -89,7 +93,7 @@
            │                           │
            ▼                           ▼
 ┌──────────────────┐    ┌──────────────────────────────┐
-│ data/store.json  │    │      data/users.json          │
+│ data/v_*.json   │    │      data/users.json          │
 │ Bugs, comentarios│    │  Usuarios con hash PBKDF2    │
 │ asignaciones, etc│    │  Preferencias (notificaciones)│
 └──────────────────┘    └──────────────────────────────┘
@@ -992,6 +996,85 @@ En algún momento previo, una transferencia de archivos (`scp`, `rsync`, o hered
 
 ---
 
+### Error 17: `v.lists is not iterable` (split store)
+
+| Campo | Detalle |
+|--------|---------|
+| **Fase** | 7 — Split Store Architecture |
+| **Commit** | `377df52` |
+| **Severidad** | 🔴 Alta (rompe 3 endpoints) |
+| **Tiempo hasta detección** | ~10 minutos (pruebas manuales post-refactor) |
+| **Tiempo hasta solución** | ~20 minutos |
+
+**Síntoma:**
+Tras dividir `store.json` en archivos `v_*.json`, varios endpoints devolvían `500 Internal Server Error` con el mensaje `TypeError: v.lists is not iterable`.
+
+**Causa raíz:**
+Los endpoints `POST /api/bugs/:bugId/followers`, `PUT /api/comments` y `POST /api/store` (notificaciones) iteraban directamente sobre `v.lists` asumiendo que el objeto `v` (versión) contenía el array completo. Tras el split, `v` solo tenía `id` y `name`; los datos reales (`lists`) estaban en el archivo `v_${v.id}.json`.
+
+```javascript
+// ❌ Código roto:
+for (const v of store.versions) {
+    for (const list of v.lists) {  // 💥 v.lists es undefined
+        // ...
+    }
+}
+```
+
+**Solución:**
+Llamar `readVersion(v.id)` antes de acceder a `lists`:
+```javascript
+// ✅ Código corregido:
+for (const v of store.versions) {
+    const ver = readVersion(v.id);
+    for (const list of ver.lists) {  // ✅ ver.lists existe
+        // ...
+    }
+}
+```
+
+**Lección:**
+> **Al refactorizar el formato de almacenamiento, auditar TODOS los consumidores.** Un cambio en la capa de persistencia afecta a todos los endpoints que lean esos datos. Hacer `grep -n '\.lists'` sobre `server.js` antes de declarar terminado el refactor.
+
+---
+
+### Error 18: Login falla por token no guardado en localStorage
+
+| Campo | Detalle |
+|--------|---------|
+| **Fase** | 7 — Login Fix |
+| **Commit** | `a1f239e` |
+| **Severidad** | 🔴 Alta (login roto para todos los usuarios) |
+| **Tiempo hasta detección** | ~5 minutos (login exitoso pero 401 en siguiente request) |
+| **Tiempo hasta solución** | ~2 minutos |
+
+**Síntoma:**
+El usuario hacía login, el servidor respondía `200 OK` con token, pero inmediatamente cualquier acción (ver bugs, crear tarea, comentar) fallaba con `401 Unauthorized`. Parecía que el login no persistía.
+
+**Causa raíz:**
+`Auth.saveSession()` guardaba el token con clave `token`:
+```javascript
+localStorage.setItem('token', token);
+```
+
+Pero `Auth.getToken()` (usado en cada `fetch`) leía con clave `bugtracker_token`:
+```javascript
+return localStorage.getItem('bugtracker_token');
+```
+
+Como las claves no coincidían, `getToken()` devolvía `null`, el header `Authorization: Bearer null` no se enviaba, y el servidor rechazaba la petición.
+
+**Solución:**
+Unificar la clave a `bugtracker_token`:
+```javascript
+localStorage.setItem('bugtracker_token', token);
+```
+
+**Lección:**
+> **Las claves de localStorage deben ser constantes compartidas.** Definir `const TOKEN_KEY = 'bugtracker_token'` en un único lugar y usarla tanto en `saveSession` como en `getToken`. Un simple `grep` de `localStorage.setItem`/`getItem` habría detectado la inconsistencia al instante.
+
+---
+
 ## 5. Configuración SMTP
 
 ### Configuración actual (Hostinger)
@@ -1324,6 +1407,102 @@ Se añadió un nuevo rol "manager" con notificaciones globales y un sistema de s
 2. **Case-sensitivity**: Los usernames deben compararse de forma case-insensitive. Los usuarios escriben con mayúsculas/minúsculas inconsistentes.
 3. **Requisitos ambiguos**: "Cualquier novedad" significa TODOS los cambios, no solo creaciones y resoluciones. Clarificar con el usuario ante duda.
 4. **Email obligatorio**: Un rol sin email configurado es inútil para notificaciones. Considerar forzar email al promover a manager.
+
+---
+
+## Fase 7: Split Store Architecture + Login Fix
+
+> **Rama:** `feat/scalability`  
+> **Commits:** `377df52` (split-store), `a1f239e` (auth token)  
+> **Fecha:** Mayo 2026
+
+### 7.1 Split Store Architecture
+
+**Problema:** `data/store.json` crecía indefinidamente. Al añadir versiones, listas y bugs, el archivo se volvía un cuello de botella para lectura/escritura y corrupción.
+
+**Solución:** Dividir `store.json` en archivos individuales por versión.
+
+| Antes | Después |
+|-------|---------|
+| `data/store.json` (único, todo el árbol) | `data/v_*.json` (un archivo por versión) |
+
+**Nomenclatura:** Cada versión se guarda como `data/v_<versionId>.json`. El contenido es el objeto versión completo (con `id`, `name`, `lists`, etc.).
+
+**Cambios en backend (`server.js`):**
+- `GET /api/store` lee todos los archivos `data/v_*.json`, los parsea y los reensambla en un objeto con `versions: [...]`.
+- Función auxiliar `readVersion(versionId)` lee `data/v_${versionId}.json` y devuelve el objeto versión.
+- `POST /api/store` (guardar) itera sobre las versiones recibidas y escribe cada una a su archivo individual.
+
+**Cambios en estructura de datos:**
+```
+data/
+├── v_a1b2c3d4.json   # Versión "v1.0"
+├── v_e5f6g7h8.json   # Versión "v2.0"
+└── users.json
+```
+
+---
+
+### 7.2 readVersion() Pattern
+
+**Regla de oro:** Todo endpoint que acceda a `store.json` (ahora a los archivos `v_*.json`) debe llamar `readVersion(v.id)` antes de iterar `v.lists`.
+
+**¿Por qué?** Después del split, el objeto `v` que viene de un array puede tener solo metadatos (`id`, `name`) sin el array `lists`. Si se itera `v.lists` directamente, se produce `TypeError: v.lists is not iterable`.
+
+**Endpoints arreglados (3 endpoints con `v.lists is not iterable`):**
+
+| Endpoint | Bug | Fix |
+|----------|-----|-----|
+| `POST /api/bugs/:bugId/followers` | Iteraba `v.lists` sin cargar la versión | `const ver = readVersion(v.id);` antes del loop |
+| `PUT /api/comments` | Iteraba `v.lists` sin cargar la versión | `const ver = readVersion(v.id);` antes del loop |
+| `POST /api/store` (notificaciones) | `oldStore` comparaba versiones sin `readVersion()` | `const oldVer = readVersion(v.id);` antes de comparar `lists` |
+
+**Patrón correcto:**
+```javascript
+// ❌ ANTES (rompe con split store)
+for (const v of store.versions) {
+    for (const list of v.lists) {  // 💥 v.lists is undefined
+        // ...
+    }
+}
+
+// ✅ DESPUÉS (split-store safe)
+for (const v of store.versions) {
+    const ver = readVersion(v.id);  // Carga el archivo v_<id>.json
+    for (const list of ver.lists) { // ✅ ver.lists existe
+        // ...
+    }
+}
+```
+
+---
+
+### 7.3 Login Fix — Auth.saveSession()
+
+**Síntoma:** El login funcionaba (el servidor devolvía token), pero las peticiones autenticadas posteriores fallaban con `401 Unauthorized`. El usuario no podía ver bugs, comentar, ni usar ninguna función protegida.
+
+**Causa raíz:** `Auth.saveSession()` guardaba el token en `localStorage` con la clave `token`, pero `Auth.getToken()` (usado en cada `fetch`) leía de `localStorage.getItem('bugtracker_token')`. La clave no coincidía, por lo que el cliente nunca enviaba el header `Authorization: Bearer <token>`.
+
+**Fix:** Unificar la clave a `bugtracker_token`:
+```javascript
+// Auth.saveSession()
+localStorage.setItem('bugtracker_token', token);  // ✅ Antes era 'token'
+
+// Auth.getToken()
+return localStorage.getItem('bugtracker_token');  // ✅ Ya leía 'bugtracker_token'
+```
+
+**Impacto:** Este bug afectaba especialmente al hash SHA-256 porque el flujo de login era más estricto (verificación de token en cada request). Sin el token en localStorage, toda la sesión quedaba rota silenciosamente.
+
+---
+
+### 7.4 Lecciones aprendidas (Fase 7)
+
+1. **Cambio de formato de datos = cambio en TODOS los consumidores.** Al dividir `store.json`, no basta con cambiar `GET /api/store`. Cada endpoint que lea versiones debe adaptarse.
+2. **Defensivo: asumir que los objetos pueden estar incompletos.** Si un objeto viene de un índice/array, no asumir que tiene todas sus propiedades. Cargar la fuente de verdad antes de iterar.
+3. **Consistencia de claves en localStorage.** Usar siempre la misma clave para guardar y leer. Un `grep` de `localStorage.setItem` y `localStorage.getItem` detecta esto al instante.
+
+---
 
 ## 📎 Apéndice: Documentación Original del Proyecto Base
 

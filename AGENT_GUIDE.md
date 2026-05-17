@@ -134,7 +134,7 @@ pm2 restart all --update-env
 | `server.js` | Backend: HTTP server, 12 endpoints, SMTP, notificaciones | ~870 | 🔴 |
 | `BugTracker.html` | Estructura HTML de la SPA | ~684 | 🟡 |
 | `styles.css` | 3 temas + responsive + componentes | ~700 | 🟢 |
-| `data/store.json` | Datos de la app (NO editar a mano) | variable | 🔴 |
+| `data/v_*.json` | Datos de la app — un archivo por versión (NO editar a mano) | variable | 🔴 |
 | `data/users.json` | Usuarios con hashes (NO editar a mano) | variable | 🔴 |
 
 **Zona de máximo peligro:** `app.js` contiene ~30 funciones interdependientes. Borrar una puede romper todo. El diff de git es tu amigo: `git diff HEAD -- app.js | wc -l`.
