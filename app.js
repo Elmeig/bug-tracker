@@ -1687,10 +1687,10 @@ function renderFollowersSection(bug) {
     
     // Add follower button
     const addBtn = section.querySelector('#btn-add-follower');
-    const addInput = section.querySelector('#add-follower-input');
-    if (addBtn && addInput) {
+    const addSelect = section.querySelector('#add-follower-select');
+    if (addBtn && addSelect) {
         addBtn.addEventListener('click', async () => {
-            const select = section.querySelector('#add-follower-select'); const username = select ? select.value : (addInput ? addInput.value.trim() : '');
+            const username = addSelect.value.trim();
             if (!username) return;
             const token = localStorage.getItem('bugtracker_token');
             const res = await fetch('/api/bugs/' + currentDetailBugId + '/followers', {
