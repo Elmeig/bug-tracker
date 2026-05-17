@@ -1622,9 +1622,19 @@ function renderFollowersSection(bug) {
     // Remove old followers section if exists
     const oldSec = document.querySelector('.followers-section');
     if (oldSec) oldSec.remove();
-    
+
     const followers = bug.followers || [];
     const currentUser = Auth.user?.username || '';
+
+    // Ensure datalist with all users exists (for follower autocompletion)
+    let dl = document.getElementById("follower-users");
+    if (!dl) {
+        dl = document.createElement("datalist");
+        dl.id = "follower-users";
+        document.body.appendChild(dl);
+    }
+    const otherUsers = (Auth._users || []).filter(u => u.username !== currentUser);
+    dl.innerHTML = otherUsers.map(u => '<option value="' + u.username + '">' + escapeHtml(u.name) + '</option>').join('');
     const isFollowing = followers.includes(currentUser);
     
     const section = document.createElement('div');
@@ -1642,7 +1652,7 @@ function renderFollowersSection(bug) {
                 ${isFollowing ? '🔕 Dejar de seguir' : '🔔 Seguir'}
             </button>
             <div class="add-follower-row">
-                <input type="text" id="add-follower-input" placeholder="Username para añadir...">
+                <input type="text" id="add-follower-input" placeholder="Username para añadir..." list="follower-users">
                 <button class="btn-sm btn-add-follower" id="btn-add-follower">+ Añadir</button>
             </div>
         </div>

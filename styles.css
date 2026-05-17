@@ -635,7 +635,7 @@ body {
 }
 .comment-date { font-size: 0.65rem; color: var(--text-muted); margin-bottom: 0.25rem; }
 .comment-text { color: var(--text-secondary); line-height: 1.5; }
-.comment-form { display: flex; flex-direction: column; gap: 0.5rem; }
+.comment-form { margin-top: 1.5rem; display: flex; flex-direction: column; gap: 0.5rem; }
 .comment-form textarea {
     width: 100%; background: var(--bg-input); border: 1px solid var(--border);
     border-radius: var(--radius); padding: 0.5rem 0.7rem;
