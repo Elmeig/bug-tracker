@@ -448,25 +448,30 @@ function getAllBugs() {
     return all;
 }
 
-// Match a bug against a search query (searches ALL fields including dates)
+// Match a bug against a search query
 function matchesBugSearch(b, q) {
-    const fields = [
-        b.title,
-        b.description,
-        b.client,
-        b.swVersion,
-        b.createdBy,
-        b.assignee,
-        b.resolvedBy,
-        b.resolvedVersion,
-        statusLabels[b.status],
-        priorityLabels[b.priority],
-        b._listName,
-        b._versionName,
-        getSearchableDateStrings(b.createdAt),
-        getSearchableDateStrings(b.updatedAt)
+    // Text fields (case-insensitive substring match)
+    const textFields = [
+        b.title, b.description, b.client, b.swVersion,
+        b.createdBy, b.assignee, b.resolvedBy, b.resolvedVersion,
+        statusLabels[b.status], priorityLabels[b.priority],
+        b._listName, b._versionName
     ];
-    return fields.some(f => f && f.toLowerCase().includes(q));
+    if (textFields.some(f => f && f.toLowerCase().includes(q))) return true;
+
+    // Date matching: only createdAt, no updatedAt
+    // Only try when query looks like a date (starts with number, contains month name, or has / separator)
+    if (/^(\d|ene|feb|mar|abr|may|jun|jul|ago|sep|oct|nov|dic)/i.test(q)) {
+        const d = new Date(b.createdAt);
+        const dateStrs = [
+            d.toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' }),
+            d.toLocaleDateString('es-ES', { day: '2-digit', month: 'long', year: 'numeric' }),
+            d.toLocaleDateString('es-ES', { day: '2-digit', month: 'numeric', year: 'numeric' }),
+            d.getFullYear().toString()
+        ].join(' ');
+        if (dateStrs.toLowerCase().includes(q.toLowerCase())) return true;
+    }
+    return false;
 }
 // ===== RENDER FUNCTIONS =====
 function renderVersionList() {
