@@ -819,11 +819,14 @@ const server = http.createServer(async (req, res) => {
 
         let bug = null;
         let bugTitle = 'esta tarea';
+        let bugVersionId = null;
         for (const v of store.versions) {
             for (const l of v.lists) {
-                bug = l.bugs.find(b => b.id === bugId);
-                if (bug) {
+                const foundBug = l.bugs.find(b => b.id === bugId);
+                if (foundBug) {
+                    bug = foundBug;
                     bugTitle = bug.title || 'esta tarea';
+                    bugVersionId = v.id;
                     break;
                 }
             }
@@ -873,7 +876,13 @@ const server = http.createServer(async (req, res) => {
         }
 
         if (wasAffected) {
-            atomicWrite(STORE_FILE, store);
+            // Persist to the version file (split store), NOT store.json
+            if (bugVersionId) {
+                const bugVersion = store.versions.find(v => v.id === bugVersionId);
+                if (bugVersion && bugVersion.lists) {
+                    writeVersionData(bugVersionId, { lists: bugVersion.lists });
+                }
+            }
             res.writeHead(200, { 'Content-Type': 'text/html' });
             res.end(
                 '<!DOCTYPE html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">' +
