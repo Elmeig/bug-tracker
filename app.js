@@ -1652,7 +1652,10 @@ function renderFollowersSection(bug) {
                 ${isFollowing ? '🔕 Dejar de seguir' : '🔔 Seguir'}
             </button>
             <div class="add-follower-row">
-                <input type="text" id="add-follower-input" placeholder="Username para añadir..." list="follower-users">
+                <select id="add-follower-select">
+                    <option value="">-- Seleccionar usuario --</option>
+                    ${otherUsers.map(u => '<option value="' + u.username + '">' + escapeHtml(u.name) + ' (' + u.username + ')</option>').join('')}
+                </select>
                 <button class="btn-sm btn-add-follower" id="btn-add-follower">+ Añadir</button>
             </div>
         </div>
@@ -1687,7 +1690,7 @@ function renderFollowersSection(bug) {
     const addInput = section.querySelector('#add-follower-input');
     if (addBtn && addInput) {
         addBtn.addEventListener('click', async () => {
-            const username = addInput.value.trim();
+            const select = section.querySelector('#add-follower-select'); const username = select ? select.value : (addInput ? addInput.value.trim() : '');
             if (!username) return;
             const token = localStorage.getItem('bugtracker_token');
             const res = await fetch('/api/bugs/' + currentDetailBugId + '/followers', {

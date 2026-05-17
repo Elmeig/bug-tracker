@@ -662,6 +662,8 @@ body {
 .add-follower-row { display: flex; gap: 0.4rem; margin-top: 0.5rem; }
 .add-follower-row input { flex: 1; padding: 0.3rem 0.5rem; border: 1px solid var(--border); border-radius: 4px; background: var(--bg); color: var(--text-primary); font-size: 0.78rem; min-width: 0; }
 .add-follower-row input:focus { border-color: var(--accent); outline: none; }
+.add-follower-row select { flex: 1; padding: 0.3rem 0.5rem; border: 1px solid var(--border); border-radius: 4px; background: var(--bg); color: var(--text-primary); font-size: 0.78rem; min-width: 0; }
+.add-follower-row select:focus { border-color: var(--accent); outline: none; }
 .btn-add-follower { background: var(--accent); color: white; border: none; border-radius: 4px; padding: 0.3rem 0.7rem; cursor: pointer; font-size: 0.78rem; white-space: nowrap; }
 .btn-add-follower:hover { opacity: 0.9; }
 .followers-actions { display: flex; flex-direction: column; gap: 0.5rem; }
