@@ -1026,8 +1026,9 @@ const server = http.createServer(async (req, res) => {
                 const vData = readVersion(v.id);
                 v.lists = vData.lists || [];
             }
-            // Find the comment
+            // Find the comment AND track version
             let found = false;
+            let commentVersionId = null;
             for (const v of store.versions) {
                 for (const l of v.lists) {
                     for (const b of l.bugs) {
@@ -1051,6 +1052,7 @@ const server = http.createServer(async (req, res) => {
                             comment.text = text.trim();
                             comment.editedAt = Date.now();
                             comment.editedBy = session.username;
+                            commentVersionId = v.id;
                             found = true;
                             break;
                         }
@@ -1064,7 +1066,13 @@ const server = http.createServer(async (req, res) => {
                 res.end(JSON.stringify({ error: 'Bug no encontrado' }));
                 return;
             }
-            atomicWrite(STORE_FILE, store);
+            // Persist to the version file (split store), NOT store.json
+            if (commentVersionId) {
+                const cv = store.versions.find(v2 => v2.id === commentVersionId);
+                if (cv && cv.lists) {
+                    writeVersionData(commentVersionId, { lists: cv.lists });
+                }
+            }
             res.writeHead(200, { 'Content-Type': 'application/json' });
             res.end(JSON.stringify({ ok: true }));
         } catch (e) {
