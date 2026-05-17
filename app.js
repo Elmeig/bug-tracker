@@ -36,7 +36,9 @@ const Sync = {
     async pull(key, localStorageKey) {
         if (!this._serverAvailable) return null;
         try {
-            const res = await fetch(this._baseUrl + '/api/' + key);
+            const headers = {};
+            if (Auth._token) headers['Authorization'] = 'Bearer ' + Auth._token;
+            const res = await fetch(this._baseUrl + '/api/' + key, { headers });
             if (!res.ok) return null;
             const data = await res.json();
             localStorage.setItem(localStorageKey, JSON.stringify(data));
@@ -83,7 +85,11 @@ const Auth = {
             if (saved) this._users = JSON.parse(saved);
         }
         const session = localStorage.getItem('bugtracker_session');
-        if (session) this._currentUser = JSON.parse(session);
+        if (session) {
+            const data = JSON.parse(session);
+            this._currentUser = data.user || data;  // handle old format (just user) and new format ({user, token})
+            this._token = data.token || localStorage.getItem('bugtracker_token');
+        }
         const token = localStorage.getItem('bugtracker_token');
         if (token) this._token = token;
     },
@@ -113,8 +119,12 @@ const Auth = {
         Sync.push('users', safeUsers);
     },
     saveSession() {
-        if (this._currentUser) localStorage.setItem('bugtracker_session', JSON.stringify(this._currentUser));
-        else localStorage.removeItem('bugtracker_session');
+        if (this._currentUser) {
+            localStorage.setItem('bugtracker_session', JSON.stringify({ user: this._currentUser, token: this._token || null }));
+        } else {
+            localStorage.removeItem('bugtracker_session');
+            localStorage.removeItem('bugtracker_token');
+        }
         if (this._token) localStorage.setItem('bugtracker_token', this._token);
         else localStorage.removeItem('bugtracker_token');
     },
