@@ -422,6 +422,15 @@ Si necesitas reconstruir el proyecto desde el commit inicial (`07cf7b9`):
 - ⚠️ Username case-insensitive
 - ⚠️ Selectores DOM: verificar que existen en HTML
 
+### Fase 6: Select Dropdown Mobile (datalist → select)
+
+- Reemplazar input + datalist por select nativo en `renderFollowersSection()`
+- El datalist NO funciona en Android/iOS Chrome — es invisible
+- Usar `<select id="add-follower-select">` con `<option>` generadas dinámicamente
+- ⚠️ NO olvidar: actualizar el event listener que lee el value (de `add-follower-input` a `add-follower-select`)
+- Commit `68aa24d`: feat: replace datalist input with select dropdown
+- Commit `1121d3e`: fix: add follower button — select vs input mismatch
+
 ---
 
 ## 🔧 TRUCOS Y COMANDOS ÚTILES

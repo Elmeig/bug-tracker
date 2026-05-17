@@ -1504,6 +1504,68 @@ return localStorage.getItem('bugtracker_token');  // ✅ Ya leía 'bugtracker_to
 
 ---
 
+## Fase 8: Select Dropdown para Followers — Mobile-Friendly (v5.1)
+
+> **Rama:** main  
+> **Commits:** 68aa24d (datalist → select), 1121d3e (fix: event listener mismatch)  
+> **Fecha:** Mayo 2026
+
+### 8.1 Problema Móvil con datalist
+
+**Problema:** El sistema de followers en Fase 6 usaba un input + datalist (`<input list="followers-datalist">`) para sugerir usuarios al añadir followers. Este elemento **no se renderiza en Chrome para Android/iOS** — el datalist es invisible en móviles, por lo que el usuario no podía seleccionar ningún usuario.
+
+**Impacto:** En móvil, el campo de añadir follower era un input vacío sin opciones visibles. Imposible añadir followers desde el teléfono.
+
+### 8.2 Solución: Select Nativo
+
+**Cambio:** Reemplazar input + datalist por un select con options generadas dinámicamente para cada usuario registrado.
+
+**Ventajas del select nativo:**
+- Funciona en **todos** los navegadores móviles (Android Chrome, Safari iOS)
+- Abre el selector nativo del sistema (scroll wheel en iOS, picker en Android)
+- Accesible por defecto — no requiere librerías JS
+- Compatible con touch events sin configuración extra
+
+**Archivos afectados:**
+- `app.js` — función `renderFollowersSection()`: se reemplazó el `<input list="followers-datalist">` por un `<select id="add-follower-select">` con `<option>` generadas dinámicamente desde la lista de usuarios
+- `server.js` — sin cambios en la lógica del endpoint (solo cambia el ID del elemento en el frontend)
+
+### 8.3 Bug: Event Listener Mismatch
+
+**Síntoma:** Tras cambiar el input por un select, el botón "+ Añadir" dejó de funcionar. No añadía ningún follower al hacer click.
+
+**Causa raíz:** El event listener del botón buscaba el valor de un input con ID `add-follower-input`:
+
+```javascript
+document.getElementById('add-follower-btn').addEventListener('click', () => {
+    const selector = document.querySelector('#add-follower-input');
+    const username = selector.value;  // ❌ selector es null tras el cambio a <select>
+    // ...
+});
+```
+
+Pero el nuevo elemento era `<select id="add-follower-select">`. El `querySelector` retornaba `null`, y `.value` en `null` causaba un error.
+
+**Solución:** Actualizar el event listener al nuevo ID:
+
+```javascript
+document.getElementById('add-follower-btn').addEventListener('click', () => {
+    const selector = document.querySelector('#add-follower-select');
+    const username = selector.value;  // ✅ ahora apunta correctamente
+    // ...
+});
+```
+
+**Lección:** Al cambiar el tipo de elemento (input → select), verificar TODOS los event listeners que referencien ese elemento. Un simple grep previene este error.
+
+### 8.4 Lecciones aprendidas (Fase 8)
+
+1. **Datalist no es mobile-friendly.** Nunca usar input con datalist como selector principal de opciones. Funciona en desktop pero es invisible en Chrome Android/iOS. Para selección móvil, usar select nativo.
+2. **Cambiar tipo de elemento = cambiar TODAS las referencias.** Al reemplazar un input por un select, no basta con cambiar el DOM — hay que buscar todas las referencias al ID/selector antiguo. Un grep previene este error.
+3. **Probar en móvil después de cambios en formularios.** Cualquier cambio en inputs, selects, o formularios debe verificarse en Chrome DevTools (Device Mode) como mínimo, y preferiblemente en un dispositivo real.
+
+---
+
 ## 📎 Apéndice: Documentación Original del Proyecto Base
 
 _Las siguientes secciones provienen de la documentación original del proyecto y cubren funcionalidades base que no han cambiado._
