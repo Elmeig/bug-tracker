@@ -963,6 +963,7 @@ function renderComments(bug) {
                 '<span class="comment-author">' + escapeHtml(c.author || 'Anónimo') + '</span>' +
                 '<span class="comment-date">' + formatDate(c.createdAt) + editedInfo + '</span>' +
                 (canEdit ? '<button class="comment-edit-btn" onclick="startEditComment(\'' + c.id + '\')" title="Editar">✏️</button>' : '') +
+                (canEdit ? '<button class="comment-delete-btn" onclick="deleteComment(\'' + c.id + '\')" title="Eliminar">🗑️</button>' : '') +
             '</div>' +
             '<div class="comment-text" id="comment-body-' + c.id + '">' + escapeHtml(c.text) + '</div>' +
         '</div>';
@@ -1021,6 +1022,35 @@ function cancelEditComment(commentId) {
     const originalText = body.getAttribute('data-original-text') || '';
     body.innerHTML = escapeHtml(originalText);
     body.removeAttribute('data-original-text');
+}
+
+// ===== DELETE COMMENT =====
+function deleteComment(commentId) {
+    confirmAction('¿Eliminar este comentario? Esta acción no se puede deshacer.', async () => {
+        const token = localStorage.getItem('bugtracker_token');
+        if (!token) { alert('No estás autenticado.'); return; }
+        try {
+            const res = await fetch('/api/comments', {
+                method: 'DELETE',
+                headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+                body: JSON.stringify({ bugId: currentDetailBugId, commentId })
+            });
+            const result = await res.json();
+            if (result.ok) {
+                await Store.loadFromServer();
+                const refreshed = Store.getBug(
+                    currentDetailVersionId || Store.data.activeVersionId,
+                    currentDetailListId || Store.data.activeListId,
+                    currentDetailBugId
+                );
+                if (refreshed) renderComments(refreshed);
+            } else {
+                alert('❌ Error: ' + (result.error || 'No se pudo eliminar'));
+            }
+        } catch (e) {
+            alert('Error al eliminar: ' + e.message);
+        }
+    });
 }
 
 // ===== BUG MODAL =====

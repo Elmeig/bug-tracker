@@ -1126,6 +1126,87 @@ const server = http.createServer(async (req, res) => {
         return;
     }
 
+    // DELETE /api/comments — Delete comment (author or admin only; managers CANNOT delete others' comments)
+    if (pathname === '/api/comments' && req.method === 'DELETE') {
+        const session = requireAuth(req);
+        if (!session) {
+            res.writeHead(401, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ error: 'No autorizado' }));
+            return;
+        }
+        try {
+            const { bugId, commentId } = await parseBody(req);
+            if (!bugId || !commentId) {
+                res.writeHead(400, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ error: 'Faltan campos requeridos' }));
+                return;
+            }
+            const store = readJSON(STORE_FILE);
+            if (!store || !store.versions) {
+                res.writeHead(404, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ error: 'Bug no encontrado' }));
+                return;
+            }
+            // Load each version's lists from its individual v_*.json file
+            for (const v of store.versions) {
+                const vData = readVersion(v.id);
+                v.lists = vData.lists || [];
+            }
+            // Find the comment AND track version
+            let found = false;
+            let commentVersionId = null;
+            for (const v of store.versions) {
+                for (const l of v.lists) {
+                    for (const b of l.bugs) {
+                        if (b.id === bugId) {
+                            const comments = b.comments || [];
+                            const comment = comments.find(c => c.id === commentId);
+                            if (!comment) {
+                                res.writeHead(404, { 'Content-Type': 'application/json' });
+                                res.end(JSON.stringify({ error: 'Comentario no encontrado' }));
+                                return;
+                            }
+                            // Permission check: author or admin only (same as edit)
+                            const users = readJSON(USERS_FILE) || [];
+                            const currentUser = users.find(u => u.id === session.userId);
+                            const isAdmin = currentUser && currentUser.role === 'admin';
+                            const isAuthor = comment.authorUser === session.username;
+                            if (!isAuthor && !isAdmin) {
+                                res.writeHead(403, { 'Content-Type': 'application/json' });
+                                res.end(JSON.stringify({ error: 'Solo el autor o el admin pueden eliminar este comentario' }));
+                                return;
+                            }
+                            b.comments = comments.filter(c => c.id !== commentId);
+                            commentVersionId = v.id;
+                            found = true;
+                            break;
+                        }
+                    }
+                    if (found) break;
+                }
+                if (found) break;
+            }
+            if (!found) {
+                res.writeHead(404, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ error: 'Bug no encontrado' }));
+                return;
+            }
+            // Persist to the version file (split store), NOT store.json
+            if (commentVersionId) {
+                const cv = store.versions.find(v2 => v2.id === commentVersionId);
+                if (cv && cv.lists) {
+                    writeVersionData(commentVersionId, { lists: cv.lists });
+                }
+            }
+            res.writeHead(200, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ ok: true }));
+        } catch (e) {
+            res.writeHead(400, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ error: e.message }));
+        }
+        return;
+    }
+
     // ===== STATIC FILES =====
     let filePath = pathname === '/' ? '/BugTracker.html' : pathname;
     filePath = path.join(__dirname, filePath);
