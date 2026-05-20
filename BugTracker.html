@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
         rel="stylesheet">
-    <link rel="stylesheet" href="styles.css?v=6.2">
+    <link rel="stylesheet" href="styles.css?v=6.3">
 </head>
 <body>
     <!-- Ambient background -->
@@ -563,25 +563,23 @@
                         </select>
                     </div>
                 </div>
-                <div class="form-row" style="margin-top:0.3rem;align-items:flex-start">
-                    <div class="form-group flex-1" style="margin-bottom:0">
-                        <label style="display:flex;align-items:center;gap:0.3rem;cursor:pointer;font-size:0.85rem;margin-bottom:0.3rem">
-                            <input type="checkbox" id="report-include-resolved" checked> Incluir tareas resueltas
-                        </label>
-                        <label style="display:flex;align-items:center;gap:0.3rem;cursor:pointer;font-size:0.85rem">
-                            <input type="checkbox" id="report-include-comments"> Incluir comentarios
-                        </label>
-                    </div>
-                    <div class="form-group flex-1" style="margin-bottom:0">
-                        <label for="report-sort-order" style="font-size:0.82rem">Ordenar por</label>
-                        <select id="report-sort-order">
-                            <option value="status-priority-date">Estado → Prioridad → Fecha</option>
-                            <option value="priority-status-date">Prioridad → Estado → Fecha</option>
-                            <option value="date-newest">Más reciente primero</option>
-                            <option value="date-oldest">Más antigua primero</option>
-                            <option value="title">Alfabético</option>
-                        </select>
-                    </div>
+                <div class="form-group" style="margin-top:0.3rem">
+                    <label style="display:flex;align-items:center;gap:0.3rem;cursor:pointer;font-size:0.85rem">
+                        <input type="checkbox" id="report-include-resolved" checked> Incluir tareas resueltas
+                    </label>
+                    <label style="display:flex;align-items:center;gap:0.3rem;cursor:pointer;font-size:0.85rem;margin-top:0.3rem">
+                        <input type="checkbox" id="report-include-comments"> Incluir comentarios
+                    </label>
+                </div>
+                <div class="form-group" style="margin-top:0.5rem">
+                    <label for="report-sort-order" style="font-size:0.82rem">Ordenar por</label>
+                    <select id="report-sort-order">
+                        <option value="status-priority-date">Estado → Prioridad → Fecha</option>
+                        <option value="priority-status-date">Prioridad → Estado → Fecha</option>
+                        <option value="date-newest">Más reciente primero</option>
+                        <option value="date-oldest">Más antigua primero</option>
+                        <option value="title">Alfabético</option>
+                    </select>
                 </div>
             </div>
             <div class="modal-footer">

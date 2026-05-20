@@ -565,7 +565,7 @@ body {
     padding: 1rem 1.2rem; border-bottom: 1px solid var(--border);
 }
 .modal-header h3 { font-size: 1rem; font-weight: 700; }
-.modal-body { padding: 1.2rem; }
+.modal-body { padding: 1.2rem; overflow-y: auto; max-height: calc(90vh - 130px); }
 .modal-footer {
     display: flex; justify-content: flex-end; gap: 0.5rem;
     padding: 0.8rem 1.2rem; border-top: 1px solid var(--border);
