@@ -58,8 +58,41 @@ function verifyUnsubscribeToken(userId, bugId, token) {
     return expected === token;
 }
 
-// ===== SESSION TOKENS (in-memory) =====
+// ===== SESSION TOKENS (persisted to disk so restarts don't kick everyone out) =====
+const SESSIONS_FILE = path.join(DATA_DIR, 'sessions.json');
+const SESSION_MAX_AGE_MS = 1000 * 60 * 60 * 24 * 30; // 30 days
+
 const sessions = new Map();
+// Load existing sessions on startup
+try {
+    if (fs.existsSync(SESSIONS_FILE)) {
+        const raw = JSON.parse(fs.readFileSync(SESSIONS_FILE, 'utf8'));
+        const now = Date.now();
+        for (const [token, sess] of Object.entries(raw || {})) {
+            if (sess && sess.createdAt && (now - sess.createdAt) < SESSION_MAX_AGE_MS) {
+                sessions.set(token, sess);
+            }
+        }
+        console.log('[sessions] loaded ' + sessions.size + ' active session(s) from disk');
+    }
+} catch (e) {
+    console.error('[sessions] failed to load:', e.message);
+}
+
+let _sessionWriteTimer = null;
+function persistSessions() {
+    // Debounce writes so we don't hammer disk on each request
+    if (_sessionWriteTimer) clearTimeout(_sessionWriteTimer);
+    _sessionWriteTimer = setTimeout(() => {
+        try {
+            const obj = {};
+            for (const [t, s] of sessions.entries()) obj[t] = s;
+            fs.writeFileSync(SESSIONS_FILE, JSON.stringify(obj));
+        } catch (e) {
+            console.error('[sessions] failed to persist:', e.message);
+        }
+    }, 500);
+}
 
 function createToken(user) {
     const token = crypto.randomBytes(32).toString('hex');
@@ -69,12 +102,21 @@ function createToken(user) {
         role: user.role,
         createdAt: Date.now()
     });
+    persistSessions();
     return token;
 }
 
 function getSession(token) {
     if (!token) return null;
-    return sessions.get(token) || null;
+    const sess = sessions.get(token);
+    if (!sess) return null;
+    // Expire stale sessions
+    if (Date.now() - sess.createdAt > SESSION_MAX_AGE_MS) {
+        sessions.delete(token);
+        persistSessions();
+        return null;
+    }
+    return sess;
 }
 
 function requireAuth(req) {
