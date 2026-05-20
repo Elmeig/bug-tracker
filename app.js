@@ -287,18 +287,18 @@ const Store = {
         const v = this.getVersion(versionId);
         if (!v) return null;
         const l = { id: crypto.randomUUID(), name, color, bugs: [], createdAt: Date.now() };
-        v.lists.push(l);
+        (v.lists || []).push(l);
         this.save();
         return l;
     },
     getList(versionId, listId) {
         const v = this.getVersion(versionId);
-        return v ? v.lists.find(l => l.id === listId) : null;
+        return v ? (v.lists || []).find(l => l.id === listId) : null;
     },
     deleteList(versionId, listId) {
         const v = this.getVersion(versionId);
         if (v) {
-            v.lists = v.lists.filter(l => l.id !== listId);
+            v.lists = (v.lists || []).filter(l => l.id !== listId);
             if (this._data.activeListId === listId) this._data.activeListId = null;
             this.save();
         }
@@ -441,7 +441,7 @@ let globalFilter = null;
 function getAllBugs() {
     const all = [];
     Store.data.versions.forEach(v => {
-        v.lists.forEach(l => {
+        (v.lists || []).forEach(l => {
             l.bugs.forEach(b => all.push({ ...b, _versionId: v.id, _listId: l.id, _versionName: v.name, _listName: l.name }));
         });
     });
@@ -483,11 +483,11 @@ function renderListList() {
     container.innerHTML = '';
     const v = Store.getVersion(Store.defaultVersionId);
     if (!v) return;
-    if (v.lists.length === 0) {
+    if ((v.lists || []).length === 0) {
         container.innerHTML = '<div style="padding:0.5rem;font-size:0.78rem;color:var(--text-muted)">Sin listas aún</div>';
         return;
     }
-    v.lists.forEach(l => {
+    (v.lists || []).forEach(l => {
         const el = document.createElement('div');
         el.className = `sidebar-item${l.id === Store.data.activeListId ? ' active' : ''}`;
         el.innerHTML = `
@@ -773,7 +773,7 @@ function renderBugCards(bugs, isCrossListView) {
 function renderStats() {
     let total = 0, open = 0, progress = 0, resolved = 0;
     Store.data.versions.forEach(v => {
-        v.lists.forEach(l => {
+        (v.lists || []).forEach(l => {
             l.bugs.forEach(b => {
                 total++;
                 if (b.resolvedBy) { resolved++; }
@@ -1122,7 +1122,7 @@ function openReportModal() {
 
     // Populate list dropdown
     const lists = [];
-    Store.data.versions.forEach(v => v.lists.forEach(l => lists.push({ id: l.id, name: l.name })));
+    Store.data.versions.forEach(v => (v.lists || []).forEach(l => lists.push({ id: l.id, name: l.name })));
     const listSel = $('#report-list');
     listSel.innerHTML = '<option value="">— Todas —</option>' + lists.map(l => `<option value="${l.id}">${escapeHtml(l.name)}</option>`).join('');
 
@@ -2076,7 +2076,7 @@ initEvents();
 (function migrateListNames() {
     let changed = false;
     Store.data.versions.forEach(v => {
-        v.lists.forEach(l => {
+        (v.lists || []).forEach(l => {
             if (l.name === 'UI Tests' || l.name === 'UI Test') {
                 l.name = 'Softlens Test';
                 changed = true;

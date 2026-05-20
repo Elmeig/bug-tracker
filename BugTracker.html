@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
         rel="stylesheet">
-    <link rel="stylesheet" href="styles.css?v=5.0">
+    <link rel="stylesheet" href="styles.css?v=6.0">
 </head>
 <body>
     <!-- Ambient background -->
@@ -520,11 +520,11 @@
                 <div class="form-row">
                     <div class="form-group flex-1">
                         <label for="report-date-from">Desde</label>
-                        <input type="date" id="report-date-from">
+                        <input type="text" id="report-date-from" placeholder="aaaa-mm-dd" pattern="[0-9]{4}-[0-9]{2}-[0-9]{2}">
                     </div>
                     <div class="form-group flex-1">
                         <label for="report-date-to">Hasta</label>
-                        <input type="date" id="report-date-to">
+                        <input type="text" id="report-date-to" placeholder="aaaa-mm-dd" pattern="[0-9]{4}-[0-9]{2}-[0-9]{2}">
                     </div>
                 </div>
                 <div class="form-row">
