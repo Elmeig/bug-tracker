@@ -750,10 +750,11 @@ const server = http.createServer(async (req, res) => {
                 v.lists = vData.lists || [];
             }
             let bug = null;
+            let bugVersion = null;
             for (const v of store.versions) {
                 for (const l of v.lists) {
                     bug = l.bugs.find(b => b.id === bugId);
-                    if (bug) break;
+                    if (bug) { bugVersion = v; break; }
                 }
                 if (bug) break;
             }
@@ -782,7 +783,8 @@ const server = http.createServer(async (req, res) => {
                 bug.followers = bug.followers.filter(f => f !== targetUser);
             }
 
-            atomicWrite(STORE_FILE, store);
+            // Persist the bug's version file (lists live in v_<id>.json, not store.json)
+            writeVersionData(bugVersion.id, { lists: bugVersion.lists });
             res.writeHead(200, { 'Content-Type': 'application/json' });
             res.end(JSON.stringify({ ok: true, followers: bug.followers }));
         } catch (e) {
