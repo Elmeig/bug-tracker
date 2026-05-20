@@ -709,6 +709,7 @@ function renderBugCards(bugs, isCrossListView) {
                     ${b.resolvedVersion ? `<span>📌 En versión: <strong>${escapeHtml(b.resolvedVersion)}</strong></span>` : ''}
                     ${b.resolvedAt ? `<span>📅 ${formatShortDate(b.resolvedAt)}</span>` : ''}
                     ${b.resolvedByUser ? `<span>👤 Marcada por: ${escapeHtml(b.resolvedByUser)}</span>` : ''}
+                    ${Auth.isAdmin ? `<button class="btn-reopen" data-reopen-bug="${b.id}" title="Reabrir tarea">↩ Reabrir</button>` : ''}
                 </div>` : `<div class="bug-tags" style="margin-top:0.2rem"><button class="btn-resolve" data-resolve-bug="${b.id}" title="Marcar como resuelta">✅ Tarea resuelta</button></div>`}
             </div>
             <div class="bug-card-actions">
@@ -764,6 +765,24 @@ function renderBugCards(bugs, isCrossListView) {
             const bug = Store.getBug(vId, lId, btn.dataset.deleteBug);
             confirmAction(`¿Eliminar la tarea "${bug?.title}"?`, () => {
                 Store.deleteBug(vId, lId, btn.dataset.deleteBug);
+                render();
+            });
+        });
+    });
+
+    container.querySelectorAll('[data-reopen-bug]').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const card = btn.closest('.bug-card');
+            const vId = isCrossListView ? card.dataset.versionId : Store.data.activeVersionId;
+            const lId = isCrossListView ? card.dataset.listId : Store.data.activeListId;
+            const bug = Store.getBug(vId, lId, btn.dataset.reopenBug);
+            confirmAction(`¿Reabrir la tarea "${bug?.title}"? Se quitará la resolución y volverá a "En curso".`, () => {
+                Store.updateBug(vId, lId, btn.dataset.reopenBug, {
+                    resolvedBy: null, resolvedVersion: null,
+                    resolvedAt: null, resolvedByUser: null,
+                    status: 'in-progress'
+                });
                 render();
             });
         });
@@ -935,6 +954,22 @@ function openBugDetailWithContext(bugId, versionId, listId) {
         ${bug.resolvedAt ? `<span class="detail-tag" style="border-color:var(--success)">📅 Resuelta: ${formatDate(bug.resolvedAt)}</span>` : ''}
         ${bug.resolvedByUser ? `<span class="detail-tag" style="border-color:var(--success)">👤 Marcada por: ${escapeHtml(bug.resolvedByUser)}</span>` : ''}
     `;
+    // Show/hide admin "Reabrir" button in detail header
+    const reopenBtn = $('#btn-detail-reopen');
+    if (reopenBtn) {
+        reopenBtn.style.display = (bug.resolvedBy && Auth.isAdmin) ? '' : 'none';
+        reopenBtn.onclick = () => {
+            confirmAction(`¿Reabrir "${bug.title}"? Se quitará la resolución y volverá a "En curso".`, () => {
+                Store.updateBug(versionId, listId, bugId, {
+                    resolvedBy: null, resolvedVersion: null,
+                    resolvedAt: null, resolvedByUser: null,
+                    status: 'in-progress'
+                });
+                closeModal('modal-detail');
+                render();
+            });
+        };
+    }
     $('#detail-description').textContent = bug.description || 'Sin descripción';
     renderComments(bug);
     renderFollowersSection(bug);
@@ -1178,6 +1213,7 @@ function generateReport() {
     const status = $('#report-status').value;
     const includeResolved = $('#report-include-resolved').checked;
     const includeComments = $('#report-include-comments').checked;
+    const sortOrder = ($('#report-sort-order') ? $('#report-sort-order').value : null) || 'status-priority-date';
 
     if (dateFrom) {
         const from = new Date(dateFrom).setHours(0, 0, 0, 0);
@@ -1193,19 +1229,26 @@ function generateReport() {
     if (status) bugs = bugs.filter(b => b.status === status);
     if (!includeResolved) bugs = bugs.filter(b => !b.resolvedBy);
 
-    // Sort order for reports:
-    // 1) Status: new (0) → in-progress (1) → resolved/passed (2)
-    // 2) Priority: critical (0) → high (1) → medium (2) → low (3)
-    // 3) Date: oldest first
+    // Sort order for reports
     const pOrder = { critical: 0, high: 1, medium: 2, low: 3 };
+    const sOrder = (b) => b.resolvedBy ? 2 : b.status === 'new' ? 0 : 1;
     bugs.sort((a, b) => {
-        const sa = a.resolvedBy ? 2 : a.status === 'new' ? 0 : 1;
-        const sb = b.resolvedBy ? 2 : b.status === 'new' ? 0 : 1;
-        if (sa !== sb) return sa - sb;
-        const pa = pOrder[a.priority] ?? 9;
-        const pb = pOrder[b.priority] ?? 9;
-        if (pa !== pb) return pa - pb;
-        return (a.createdAt || 0) - (b.createdAt || 0);
+        if (sortOrder === 'status-priority-date') {
+            const sd = sOrder(a) - sOrder(b); if (sd) return sd;
+            const pd = (pOrder[a.priority] ?? 9) - (pOrder[b.priority] ?? 9); if (pd) return pd;
+            return (a.createdAt || 0) - (b.createdAt || 0);
+        } else if (sortOrder === 'priority-status-date') {
+            const pd = (pOrder[a.priority] ?? 9) - (pOrder[b.priority] ?? 9); if (pd) return pd;
+            const sd = sOrder(a) - sOrder(b); if (sd) return sd;
+            return (a.createdAt || 0) - (b.createdAt || 0);
+        } else if (sortOrder === 'date-newest') {
+            return (b.createdAt || 0) - (a.createdAt || 0);
+        } else if (sortOrder === 'date-oldest') {
+            return (a.createdAt || 0) - (b.createdAt || 0);
+        } else if (sortOrder === 'title') {
+            return (a.title || '').localeCompare(b.title || '', 'es');
+        }
+        return 0;
     });
 
     // Build filter description
@@ -1341,7 +1384,7 @@ ${bugs.map((b, i) => {
     card += '<span class="task-title">' + escapeHtml(b.title) + '</span>';
     card += '<div class="task-badges">';
     card += '<span class="badge ' + statusClass + '">' + (b.resolvedBy ? '✅ Resuelta' : statusLabels[b.status]) + '</span>';
-    card += '<span class="badge ' + priorityClass + '">' + priorityLabels[b.priority] + '</span>';
+    if (!b.resolvedBy) card += '<span class="badge ' + priorityClass + '">' + priorityLabels[b.priority] + '</span>';
     card += '</div></div>';
     if (b.description) card += '<div class="task-desc">' + escapeHtml(b.description) + '</div>';
     card += '<div class="task-meta">';

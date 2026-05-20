@@ -685,6 +685,8 @@ body {
 .comment-edit-btn:hover { opacity: 1; background: var(--hover-bg, rgba(255,255,255,0.05)); }
 .comment-delete-btn { background: none; border: none; cursor: pointer; font-size: 0.7rem; padding: 2px 4px; opacity: 0.5; border-radius: 4px; margin-left: 2px; }
 .comment-delete-btn:hover { opacity: 1; background: rgba(220, 38, 38, 0.15); }
+.btn-reopen { background: none; border: 1px solid var(--border); color: var(--text-secondary); font-size: 0.72rem; padding: 0.2rem 0.5rem; border-radius: 4px; cursor: pointer; margin-left: 0.3rem; }
+.btn-reopen:hover { background: var(--warning-bg, rgba(245,158,11,0.12)); color: var(--warning, #b45309); border-color: var(--warning, #b45309); }
 .comment-edit-textarea { width: 100%; min-height: 60px; padding: 0.5rem; font-size: 0.82rem; border: 1px solid var(--border); border-radius: 6px; background: var(--bg); color: var(--text-primary); resize: vertical; margin-bottom: 0.4rem; }
 .comment-edit-actions { display: flex; gap: 0.4rem; justify-content: flex-end; }
 .comment-edit-actions .btn-sm { font-size: 0.72rem; padding: 0.25rem 0.6rem; border-radius: 4px; border: none; cursor: pointer; }

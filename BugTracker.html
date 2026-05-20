@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
         rel="stylesheet">
-    <link rel="stylesheet" href="styles.css?v=6.1">
+    <link rel="stylesheet" href="styles.css?v=6.2">
 </head>
 <body>
     <!-- Ambient background -->
@@ -452,6 +452,10 @@
                         style="font-size:0.75rem;padding:0.3rem 0.7rem">
                         ✏️ Editar
                     </button>
+                    <button class="btn-secondary btn-sm" id="btn-detail-reopen" title="Reabrir tarea"
+                        style="font-size:0.75rem;padding:0.3rem 0.7rem;display:none">
+                        ↩ Reabrir
+                    </button>
                     <button class="btn-icon modal-close" data-modal="modal-detail">
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                             stroke-width="2" stroke-linecap="round">
@@ -567,6 +571,16 @@
                         style="display:flex;align-items:center;gap:0.3rem;cursor:pointer;font-size:0.85rem;margin-top:0.3rem">
                         <input type="checkbox" id="report-include-comments"> Incluir comentarios
                     </label>
+                </div>
+                <div class="form-group" style="margin-top:0.5rem">
+                    <label for="report-sort-order" style="font-size:0.82rem">Ordenar por</label>
+                    <select id="report-sort-order">
+                        <option value="status-priority-date">Estado → Prioridad → Fecha</option>
+                        <option value="priority-status-date">Prioridad → Estado → Fecha</option>
+                        <option value="date-newest">Fecha más reciente primero</option>
+                        <option value="date-oldest">Fecha más antigua primero</option>
+                        <option value="title">Alfabético (título)</option>
+                    </select>
                 </div>
             </div>
             <div class="modal-footer">
