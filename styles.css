@@ -659,6 +659,8 @@ body {
 .followers-header { font-weight: 600; margin-bottom: 0.5rem; font-size: 0.85rem; color: var(--text-primary); }
 .followers-list { display: flex; flex-wrap: wrap; gap: 0.25rem; margin-bottom: 0.5rem; }
 .follower-tag { display: inline-flex; align-items: center; gap: 0.3rem; background: var(--bg-secondary); padding: 0.2rem 0.5rem; border-radius: 12px; font-size: 0.75rem; color: var(--text-primary); }
+.follower-tag-ghost { opacity: 0.5; border: 1px dashed var(--text-muted); background: transparent; }
+.follower-ghost { font-size: 0.75rem; }
 .follower-remove { background: none; border: none; cursor: pointer; color: var(--text-muted); font-size: 0.85rem; padding: 0 2px; line-height: 1; }
 .follower-remove:hover { color: #dc2626; }
 .no-followers { font-size: 0.75rem; color: var(--text-muted); font-style: italic; }

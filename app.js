@@ -1829,6 +1829,7 @@ function renderFollowersSection(bug) {
     const otherUsers = (Auth._users || []).filter(u => u.username !== currentUser);
     dl.innerHTML = otherUsers.map(u => '<option value="' + u.username + '">' + escapeHtml(u.name) + '</option>').join('');
     const isFollowing = followers.includes(currentUser);
+    const isAdmin = Auth.isAdmin;
     
     const section = document.createElement('div');
     section.className = 'followers-section';
@@ -1837,7 +1838,14 @@ function renderFollowersSection(bug) {
             <span>👥 Seguidores (${followers.length})</span>
         </div>
         <div class="followers-list">
-            ${followers.map(f => `<span class="follower-tag">${escapeHtml(f)} <button class="follower-remove" onclick="removeFollower('${escapeHtml(f)}')">×</button></span>`).join('')}
+            ${followers.map(f => {
+                const isOwn = f === currentUser;
+                const userExists = (Auth._users || []).some(u => u.username === f);
+                const canRemove = isOwn || isAdmin;
+                const ghostLabel = !userExists ? ' <span class="follower-ghost" title="Usuario eliminado">👻</span>' : '';
+                const removeBtn = canRemove ? ` <button class="follower-remove" onclick="removeFollower('${escapeHtml(f)}')">×</button>` : '';
+                return `<span class="follower-tag${!userExists ? ' follower-tag-ghost' : ''}">${escapeHtml(f)}${ghostLabel}${removeBtn}</span>`;
+            }).join('')}
             ${followers.length === 0 ? '<span class="no-followers">Nadie sigue esta tarea aún</span>' : ''}
         </div>
         <div class="followers-actions">

@@ -892,9 +892,20 @@ const server = http.createServer(async (req, res) => {
             const targetUser = (username || session.username).toLowerCase();
             const users = readJSON(USERS_FILE) || [];
             const targetUserObj = users.find(u => u.username.toLowerCase() === targetUser.toLowerCase());
-            if (!targetUserObj) {
+
+            // Allow admins to remove ghost followers (deleted users) — skip existence check for remove action
+            const sessionUser = users.find(u => u.id === session.userId);
+            const isAdmin = sessionUser && sessionUser.role === 'admin';
+            const isRemove = action === 'remove' || (action == null && bug.followers.includes(targetUser));
+            if (!targetUserObj && !isRemove) {
                 res.writeHead(400, { 'Content-Type': 'application/json' });
                 res.end(JSON.stringify({ error: 'El usuario "' + targetUser + '" no existe' }));
+                return;
+            }
+            // Only admin can remove someone else's follower entry
+            if (targetUser !== session.username.toLowerCase() && !isAdmin) {
+                res.writeHead(403, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ error: 'Solo el admin puede quitar seguidores de otros usuarios' }));
                 return;
             }
 
