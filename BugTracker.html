@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
         rel="stylesheet">
-    <link rel="stylesheet" href="styles.css?v=6.3">
+    <link rel="stylesheet" href="styles.css?v=6.6">
 </head>
 <body>
     <!-- Ambient background -->
@@ -400,8 +400,11 @@
                 </div>
                 <div class="form-group">
                     <label for="bug-description">Descripción</label>
-                    <textarea id="bug-description" rows="3"
-                        placeholder="Pasos para reproducir, comportamiento esperado vs actual..."></textarea>
+                    <div class="mention-wrapper">
+                        <textarea id="bug-description" rows="3"
+                            placeholder="Pasos para reproducir, comportamiento esperado vs actual... (usa @ para mencionar)"></textarea>
+                        <div id="mention-dropdown-desc" class="mention-dropdown" style="display:none"></div>
+                    </div>
                 </div>
                 <div class="form-row">
                     <div class="form-group flex-1">
@@ -474,7 +477,10 @@
                     <h4>Comentarios</h4>
                     <div class="comments-list" id="comments-list"></div>
                     <div class="comment-form">
-                        <textarea id="comment-text" rows="2" placeholder="Escribe un comentario..."></textarea>
+                        <div class="mention-wrapper">
+                            <textarea id="comment-text" rows="2" placeholder="Escribe un comentario... (usa @ para mencionar)"></textarea>
+                            <div id="mention-dropdown" class="mention-dropdown" style="display:none"></div>
+                        </div>
                         <button class="btn-primary btn-sm" id="btn-add-comment">Comentar</button>
                     </div>
                 </div>

@@ -233,13 +233,13 @@ body {
 
 /* Resolve button */
 .btn-resolve {
-    display: inline-flex; align-items: center; gap: 0.3rem;
-    font-size: 0.65rem; font-weight: 600; padding: 0.2rem 0.5rem;
+    display: inline-flex; align-items: center; gap: 0.25rem;
+    font-size: 0.62rem; font-weight: 500; padding: 0.15rem 0.45rem;
     border-radius: 4px; border: 1px solid var(--success); color: var(--success);
     background: transparent; cursor: pointer; transition: all var(--transition);
-    white-space: nowrap;
+    white-space: nowrap; opacity: 0.7;
 }
-.btn-resolve:hover { background: var(--success); color: #000; }
+.btn-resolve:hover { background: var(--success); color: #000; opacity: 1; }
 
 /* Resolved info block on cards */
 .bug-resolved-info {
@@ -920,4 +920,68 @@ body {
 
     /* User menu buttons */
     .user-menu { gap: 0.2rem; }
+}
+
+/* ===== @MENTION DROPDOWN ===== */
+.mention-wrapper {
+    position: relative;
+    width: 100%;
+}
+.mention-dropdown {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-hover);
+    border-radius: 8px;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.25);
+    z-index: 9999;
+    max-height: 200px;
+    overflow-y: auto;
+    margin-top: 2px;
+}
+.mention-item {
+    display: flex;
+    align-items: center;
+    gap: 0.55rem;
+    padding: 0.5rem 0.8rem;
+    cursor: pointer;
+    font-size: 0.88rem;
+    transition: background 0.15s;
+    color: var(--text-primary);
+}
+.mention-item:hover,
+.mention-item.active {
+    background: var(--accent);
+    color: #fff;
+}
+.mention-avatar {
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    background: var(--accent);
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.78rem;
+    font-weight: 700;
+    flex-shrink: 0;
+}
+.mention-item:hover .mention-avatar,
+.mention-item.active .mention-avatar {
+    background: rgba(255,255,255,0.25);
+}
+.mention-username {
+    font-weight: 600;
+}
+.mention-realname {
+    font-size: 0.78rem;
+    opacity: 0.7;
+}
+/* highlight @mentions in comment text */
+.comment-text .mention-tag {
+    color: var(--accent);
+    font-weight: 600;
 }

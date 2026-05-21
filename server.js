@@ -268,6 +268,40 @@ async function sendEmail(to, subject, text, attachmentStr, html) {
     return info;
 }
 
+// ===== MENTION DETECTION =====
+// Returns array of user objects that are @mentioned in text and have email
+function extractMentionedUsers(text, users, excludeUserId) {
+    const matches = (text || '').match(/@([\w]+)/g) || [];
+    const found = new Map();
+    for (const m of matches) {
+        const username = m.slice(1).toLowerCase();
+        const user = users.find(u => u.username.toLowerCase() === username && u.email && u.email.trim() && u.id !== excludeUserId);
+        if (user && !found.has(user.email)) found.set(user.email, user);
+    }
+    return [...found.values()];
+}
+
+async function sendMentionNotifications(mentionedUsers, mentionerName, bugTitle, listName, contextText, bugId) {
+    for (const user of mentionedUsers) {
+        try {
+            const unfollowToken = generateUnsubscribeToken(user.id, bugId || '');
+            const unfollowLink = 'https://bugtracker.tail51f3b0.ts.net/api/bugs/' + encodeURIComponent(bugId || '') + '/unsubscribe?userId=' + encodeURIComponent(user.id) + '&token=' + unfollowToken;
+            const text = '🔔 ' + mentionerName + ' te mencionó en: ' + bugTitle + '\n' +
+                '   📋 Lista: ' + listName + '\n' +
+                '   💬 "' + contextText.slice(0, 300) + '"\n\n' +
+                '🔗 Revisa en: https://bugtracker.tail51f3b0.ts.net';
+            const html = toHtml(text) + '<br><hr style="border:none;border-top:1px solid #ddd;margin:20px 0"><p style="font-size:12px;color:#999;font-family:Arial,sans-serif;"><a href="' + unfollowLink + '" style="color:#6366f1;">Dejar de recibir notificaciones sobre esta tarea</a></p>';
+            await sendEmail(user.email,
+                '[Bug Tracker] ' + mentionerName + ' te mencionó en "' + bugTitle + '"',
+                text, null, html
+            );
+            console.log('[Mention] Sent to', user.email, '(' + user.name + ')');
+        } catch (e) {
+            console.error('[Mention] Failed for', user.email, ':', e.message);
+        }
+    }
+}
+
 const server = http.createServer(async (req, res) => {
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, OPTIONS');
@@ -748,6 +782,53 @@ const server = http.createServer(async (req, res) => {
                 console.log('[Notify] Skipping - oldStore:', !!oldStore, 'data.versions:', !!(data && data.versions), 'isArray:', !!(oldStore && Array.isArray(oldStore.versions)));
             }
 
+            // ===== MENTION NOTIFICATIONS (new/updated descriptions + new comments) =====
+            if (oldStore && data.versions && Array.isArray(oldStore.versions)) {
+                const allUsers = readJSON(USERS_FILE) || [];
+                const mentionerName = session.username.charAt(0).toUpperCase() + session.username.slice(1);
+                for (const v of data.versions) {
+                    const oldV = (oldStore.versions || []).find(ov => ov.id === v.id);
+                    for (const l of (v.lists || [])) {
+                        const oldL = oldV ? (oldV.lists || []).find(ol => ol.id === l.id) : null;
+                        for (const b of (l.bugs || [])) {
+                            const oldB = oldL ? (oldL.bugs || []).find(ob => ob.id === b.id) : null;
+                            const mentionsToSend = new Map(); // email -> user (dedup across sources)
+
+                            // Check description changes for new @mentions
+                            const oldDesc = oldB ? (oldB.description || '') : '';
+                            const newDesc = b.description || '';
+                            if (newDesc !== oldDesc) {
+                                // Find mentions that are NEW (not in old description)
+                                const oldMentioned = extractMentionedUsers(oldDesc, allUsers, session.userId).map(u => u.email);
+                                for (const u of extractMentionedUsers(newDesc, allUsers, session.userId)) {
+                                    if (!oldMentioned.includes(u.email)) mentionsToSend.set(u.email, { user: u, text: newDesc });
+                                }
+                            }
+
+                            // Check for new comments with @mentions
+                            const oldComments = oldB ? (oldB.comments || []) : [];
+                            const newComments = b.comments || [];
+                            if (newComments.length > oldComments.length) {
+                                const addedComments = newComments.slice(oldComments.length);
+                                for (const cm of addedComments) {
+                                    for (const u of extractMentionedUsers(cm.text, allUsers, session.userId)) {
+                                        if (!mentionsToSend.has(u.email)) mentionsToSend.set(u.email, { user: u, text: cm.text });
+                                    }
+                                }
+                            }
+
+                            if (mentionsToSend.size > 0) {
+                                const mentionedUsers = [...mentionsToSend.values()].map(m => m.user);
+                                // Use the first mention's context text (each user gets the text where they appear)
+                                for (const [email, { user, text }] of mentionsToSend) {
+                                    await sendMentionNotifications([user], mentionerName, b.title, l.name, text, b.id);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
             // Save split version files (scalability)
             if (data.versions) {
                 const meta = { versions: [], activeVersionId: data.activeVersionId, activeListId: data.activeListId };
@@ -1093,10 +1174,19 @@ const server = http.createServer(async (req, res) => {
                                 res.end(JSON.stringify({ error: 'Solo el autor o el admin pueden editar este comentario' }));
                                 return;
                             }
+                            const oldCommentText = comment.text || '';
                             comment.text = text.trim();
                             comment.editedAt = Date.now();
                             comment.editedBy = session.username;
                             commentVersionId = v.id;
+                            // Detect new @mentions introduced by edit
+                            const allUsers = users;
+                            const oldMentioned = extractMentionedUsers(oldCommentText, allUsers, session.userId).map(u => u.email);
+                            const newMentioned = extractMentionedUsers(comment.text, allUsers, session.userId).filter(u => !oldMentioned.includes(u.email));
+                            if (newMentioned.length > 0) {
+                                const mentionerName = session.username.charAt(0).toUpperCase() + session.username.slice(1);
+                                sendMentionNotifications(newMentioned, mentionerName, b.title, l.name, comment.text, b.id).catch(e => console.error('[Mention] Edit error:', e.message));
+                            }
                             found = true;
                             break;
                         }

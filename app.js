@@ -1000,10 +1000,107 @@ function renderComments(bug) {
                 (canEdit ? '<button class="comment-edit-btn" onclick="startEditComment(\'' + c.id + '\')" title="Editar">✏️</button>' : '') +
                 (canEdit ? '<button class="comment-delete-btn" onclick="deleteComment(\'' + c.id + '\')" title="Eliminar">🗑️</button>' : '') +
             '</div>' +
-            '<div class="comment-text" id="comment-body-' + c.id + '">' + escapeHtml(c.text) + '</div>' +
+            '<div class="comment-text" id="comment-body-' + c.id + '">' + highlightMentions(escapeHtml(c.text)) + '</div>' +
         '</div>';
     }).join('');
     container.scrollTop = container.scrollHeight;
+}
+
+// ===== @MENTION HIGHLIGHT =====
+function highlightMentions(escapedText) {
+    return escapedText.replace(/@([\w]+)/g, '<span class="mention-tag">@$1</span>');
+}
+
+// ===== @MENTION AUTOCOMPLETE =====
+function setupMentionAutocomplete(textareaId, dropdownId) {
+    const ta = document.getElementById(textareaId);
+    const dd = document.getElementById(dropdownId);
+    if (!ta || !dd) return;
+
+    let activeIdx = -1;
+
+    function getQuery() {
+        const val = ta.value;
+        const pos = ta.selectionStart;
+        const before = val.slice(0, pos);
+        const m = before.match(/@([\w]*)$/);
+        return m ? m[1] : null;
+    }
+
+    function getUsers() {
+        return (Auth._users || []).filter(u => u.username !== (Auth.user?.username || ''));
+    }
+
+    function showDropdown(query) {
+        const users = getUsers().filter(u =>
+            u.username.toLowerCase().startsWith(query.toLowerCase()) ||
+            (u.name || '').toLowerCase().startsWith(query.toLowerCase())
+        );
+        if (users.length === 0) { hideDropdown(); return; }
+        activeIdx = -1;
+        dd.innerHTML = users.map((u, i) =>
+            '<div class="mention-item" data-username="' + u.username + '" data-idx="' + i + '">' +
+                '<div class="mention-avatar">' + (u.name || u.username).charAt(0).toUpperCase() + '</div>' +
+                '<span class="mention-username">@' + escapeHtml(u.username) + '</span>' +
+                '<span class="mention-realname">' + escapeHtml(u.name || '') + '</span>' +
+            '</div>'
+        ).join('');
+        dd.style.display = 'block';
+    }
+
+    function hideDropdown() {
+        dd.style.display = 'none';
+        dd.innerHTML = '';
+        activeIdx = -1;
+    }
+
+    function insertMention(username) {
+        const val = ta.value;
+        const pos = ta.selectionStart;
+        const before = val.slice(0, pos);
+        const after = val.slice(pos);
+        const replaced = before.replace(/@([\w]*)$/, '@' + username + ' ');
+        ta.value = replaced + after;
+        ta.selectionStart = ta.selectionEnd = replaced.length;
+        ta.focus();
+        hideDropdown();
+    }
+
+    ta.addEventListener('input', () => {
+        const q = getQuery();
+        if (q !== null) showDropdown(q);
+        else hideDropdown();
+    });
+
+    ta.addEventListener('keydown', (e) => {
+        if (dd.style.display === 'none') return;
+        const items = dd.querySelectorAll('.mention-item');
+        if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            activeIdx = Math.min(activeIdx + 1, items.length - 1);
+            items.forEach((el, i) => el.classList.toggle('active', i === activeIdx));
+        } else if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            activeIdx = Math.max(activeIdx - 1, 0);
+            items.forEach((el, i) => el.classList.toggle('active', i === activeIdx));
+        } else if (e.key === 'Enter' || e.key === 'Tab') {
+            if (activeIdx >= 0 && items[activeIdx]) {
+                e.preventDefault();
+                insertMention(items[activeIdx].dataset.username);
+            }
+        } else if (e.key === 'Escape') {
+            hideDropdown();
+        }
+    });
+
+    dd.addEventListener('mousedown', (e) => {
+        const item = e.target.closest('.mention-item');
+        if (item) { e.preventDefault(); insertMention(item.dataset.username); }
+    });
+
+    document.addEventListener('click', (e) => {
+        if (!ta.contains(e.target) && !dd.contains(e.target)) hideDropdown();
+    });
 }
 
 // ===== INLINE COMMENT EDITING =====
@@ -1012,13 +1109,19 @@ function startEditComment(commentId) {
     if (!body || body.querySelector('textarea')) return;
     const oldText = body.textContent;
     body.setAttribute('data-original-text', oldText);
-    body.innerHTML = '<textarea id="edit-textarea-' + commentId + '" class="comment-edit-textarea">' + escapeHtml(oldText) + '</textarea>' +
+    const dropdownId = 'mention-dropdown-edit-' + commentId;
+    body.innerHTML = '<div class="mention-wrapper"><textarea id="edit-textarea-' + commentId + '" class="comment-edit-textarea">' + escapeHtml(oldText) + '</textarea>' +
+        '<div id="' + dropdownId + '" class="mention-dropdown" style="display:none"></div></div>' +
         '<div class="comment-edit-actions">' +
             '<button class="btn-sm btn-save" onclick="saveEditComment(\'' + commentId + '\')">💾 Guardar</button>' +
             '<button class="btn-sm btn-cancel-edit" onclick="cancelEditComment(\'' + commentId + '\')">✕ Cancelar</button>' +
         '</div>';
     const ta = document.getElementById('edit-textarea-' + commentId);
-    if (ta) { ta.focus(); ta.selectionStart = ta.value.length; }
+    if (ta) {
+        ta.focus();
+        ta.selectionStart = ta.value.length;
+        setupMentionAutocomplete('edit-textarea-' + commentId, dropdownId);
+    }
 }
 
 async function saveEditComment(commentId) {
@@ -1587,8 +1690,15 @@ function initEvents() {
     $('#list-name').addEventListener('keydown', (e) => { if (e.key === 'Enter') $('#btn-save-list').click(); });
     $('#bug-title').addEventListener('keydown', (e) => { if (e.key === 'Enter') $('#btn-save-bug').click(); });
     $('#comment-text').addEventListener('keydown', (e) => {
+        // Don't submit if mention dropdown is open (handled by setupMentionAutocomplete)
+        const dd = document.getElementById('mention-dropdown');
+        if (dd && dd.style.display !== 'none') return;
         if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); $('#btn-add-comment').click(); }
     });
+
+    // Setup @mention autocomplete on both textareas
+    setupMentionAutocomplete('comment-text', 'mention-dropdown');
+    setupMentionAutocomplete('bug-description', 'mention-dropdown-desc');
 
     // Escape to close modals
     document.addEventListener('keydown', (e) => {
