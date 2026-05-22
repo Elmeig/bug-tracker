@@ -427,7 +427,7 @@ function getSearchableDateStrings(ts) {
     ].join(' ');
 }
 
-const statusLabels = { 'new': 'Nuevo', 'in-progress': 'En curso', 'passed': 'Pasado', 'failed': 'Fallido' };
+const statusLabels = { 'open': 'Nuevo', 'in-progress': 'En curso', 'passed': 'Pasado', 'failed': 'Fallido' };
 const priorityLabels = { low: 'Baja', medium: 'Media', high: 'Alta', critical: 'Crítica' };
 
 // Search state
@@ -656,7 +656,7 @@ function renderBugList() {
 
 // ===== SORTING =====
 const priorityOrder = { critical: 0, high: 1, medium: 2, low: 3 };
-const statusOrder = { 'new': 0, 'in-progress': 1, 'failed': 2, 'passed': 3 };
+const statusOrder = { 'open': 0, 'in-progress': 1, 'failed': 2, 'passed': 3 };
 
 function sortBugs(bugs) {
     const sortBy = document.getElementById('sort-select')?.value || 'newest';
@@ -796,7 +796,7 @@ function renderStats() {
             l.bugs.forEach(b => {
                 total++;
                 if (b.resolvedBy) { resolved++; }
-                else if (b.status === 'new') open++;
+                else if (b.status === 'open') open++;
                 else if (b.status === 'in-progress') progress++;
                 else if (b.status === 'passed' || b.status === 'failed') resolved++;
             });
@@ -941,7 +941,7 @@ function openBugDetailWithContext(bugId, versionId, listId) {
 
     $('#detail-title').textContent = bug.title;
     $('#detail-meta').innerHTML = `
-        <span class="detail-tag" style="border-color:${bug.status === 'new' ? 'var(--accent)' : bug.status === 'in-progress' ? 'var(--warning)' : bug.status === 'passed' ? 'var(--success)' : 'var(--danger)'}">${statusLabels[bug.status]}</span>
+        <span class="detail-tag" style="border-color:${bug.status === 'open' ? 'var(--accent)' : bug.status === 'in-progress' ? 'var(--warning)' : bug.status === 'passed' ? 'var(--success)' : 'var(--danger)'}">${statusLabels[bug.status]}</span>
         <span class="detail-tag">${priorityLabels[bug.priority]} prioridad</span>
         ${getAssignees(bug).map(a => `<span class="detail-tag">👤 ${escapeHtml(a)}</span>`).join('')}
         ${bug.createdBy ? `<span class="detail-tag">✏️ Tester: ${escapeHtml(bug.createdBy)}</span>` : ''}
@@ -1232,7 +1232,7 @@ function openBugModalWithContext(bugId, versionId, listId) {
         $('#bug-title').value = '';
         $('#bug-description').value = '';
         $('#bug-priority').value = 'medium';
-        $('#bug-status').value = 'new';
+        $('#bug-status').value = 'open';
         $('#bug-assignee').value = '';
         $('#bug-client').value = '';
         $('#bug-sw-version').value = '';
@@ -1334,7 +1334,7 @@ function generateReport() {
 
     // Sort order for reports
     const pOrder = { critical: 0, high: 1, medium: 2, low: 3 };
-    const sOrder = (b) => b.resolvedBy ? 2 : b.status === 'new' ? 0 : 1;
+    const sOrder = (b) => b.resolvedBy ? 2 : b.status === 'open' ? 0 : 1;
     bugs.sort((a, b) => {
         if (sortOrder === 'status-priority-date') {
             const sd = sOrder(a) - sOrder(b); if (sd) return sd;
@@ -1364,7 +1364,7 @@ function generateReport() {
     if (!includeResolved) filterParts.push('Sin tareas resueltas');
 
     // Stats
-    const totalOpen = bugs.filter(b => !b.resolvedBy && b.status === 'new').length;
+    const totalOpen = bugs.filter(b => !b.resolvedBy && b.status === 'open').length;
     const totalProgress = bugs.filter(b => !b.resolvedBy && b.status === 'in-progress').length;
     const totalResolved = bugs.filter(b => b.resolvedBy).length;
 
@@ -1477,7 +1477,7 @@ function generateReport() {
 
 <div class="task-list">
 ${bugs.map((b, i) => {
-    const statusClass = b.status === 'new' ? 'badge-new' : b.status === 'in-progress' ? 'badge-progress' : b.status === 'passed' ? 'badge-passed' : 'badge-failed';
+    const statusClass = b.status === 'open' ? 'badge-new' : b.status === 'in-progress' ? 'badge-progress' : b.status === 'passed' ? 'badge-passed' : 'badge-failed';
     const priorityClass = 'priority-' + b.priority;
     const assignees = getAssignees(b).join(', ');
     const created = b.createdAt ? new Date(b.createdAt).toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' }) : '—';
@@ -1765,7 +1765,7 @@ function initEvents() {
         render();
     });
     $('#stat-open').addEventListener('click', () => {
-        globalFilter = { type: 'status', value: 'new' };
+        globalFilter = { type: 'status', value: 'open' };
         Store.setActive(null, null);
         render();
     });
