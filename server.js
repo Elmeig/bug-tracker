@@ -207,6 +207,127 @@ function parseBody(req) {
     });
 }
 
+// ===== SCHEMA VALIDATION (Whitelisting & Typing) =====
+// Drafted by @Seggisbot security audit, integrated with tree-walking sanitizer
+// for the /api/store giant-tree-sync architecture.
+function validateSchema(data, schema) {
+    const result = {};
+    const droppedKeys = [];
+    for (const key of Object.keys(data || {})) {
+        if (!schema[key]) droppedKeys.push(key);
+    }
+    if (droppedKeys.length > 0) {
+        console.warn(`[SchemaWarn] Dropped unknown keys: ${droppedKeys.join(', ')}`);
+    }
+
+    const norm = (s) => (s !== undefined && s !== null ? String(s) : '').trim();
+
+    for (const [key, rules] of Object.entries(schema)) {
+        if (data && data[key] !== undefined) {
+            let val = data[key];
+            if (rules.type === 'string') {
+                val = norm(val);
+                if (rules.maxLength && val.length > rules.maxLength) {
+                    val = val.substring(0, rules.maxLength);
+                }
+                if (rules.enum && !rules.enum.includes(val)) {
+                    val = rules.default !== undefined ? rules.default : '';
+                }
+            } else if (rules.type === 'number') {
+                val = Number(val);
+                if (isNaN(val)) val = rules.default !== undefined ? rules.default : 0;
+            } else if (rules.type === 'boolean') {
+                val = Boolean(val);
+            } else if (rules.type === 'array') {
+                val = Array.isArray(val) ? val : [];
+                if (rules.maxLength) val = val.slice(0, rules.maxLength);
+            }
+            result[key] = val;
+        } else if (rules.required) {
+            throw new Error(`Missing required field: ${key}`);
+        } else if (rules.default !== undefined) {
+            result[key] = rules.default;
+        }
+    }
+    return result;
+}
+
+const SCHEMAS = {
+    bug: {
+        title: { type: 'string', maxLength: 200, required: true },
+        description: { type: 'string', maxLength: 10000, default: '' },
+        priority: { type: 'string', enum: ['low', 'medium', 'high', 'critical'], default: 'low' },
+        status: { type: 'string', enum: ['open', 'in-progress', 'resolved'], default: 'open' },
+        tags: { type: 'array', maxLength: 50, default: [] },
+        locked: { type: 'boolean', default: false },
+        createdBy: { type: 'string', maxLength: 64, default: '' },
+        createdAt: { type: 'string', maxLength: 50, default: '' }
+    },
+    list: {
+        name: { type: 'string', maxLength: 100, required: true },
+        color: { type: 'string', maxLength: 20, default: '#6366f1' }
+    },
+    version: {
+        name: { type: 'string', maxLength: 100, required: true },
+        link: { type: 'string', maxLength: 500, default: '' }
+    },
+    comment_edit: {
+        bugId: { type: 'string', maxLength: 64, required: true },
+        commentId: { type: 'string', maxLength: 64, required: true },
+        text: { type: 'string', maxLength: 5000, required: true }
+    },
+    follower_action: {
+        action: { type: 'string', enum: ['add', 'remove', 'toggle'], required: true },
+        username: { type: 'string', maxLength: 100, required: true }
+    }
+};
+
+// Tree-walker for POST /api/store — the entire bug tree comes in one shot.
+function sanitizeStore(data) {
+    const out = { versions: [] };
+    if (!data || !Array.isArray(data.versions)) return out;
+
+    for (const v of data.versions) {
+        const cleanV = validateSchema(v, SCHEMAS.version);
+        cleanV.id = String(v.id || '').slice(0, 64);
+
+        cleanV.lists = (Array.isArray(v.lists) ? v.lists : []).map(l => {
+            const cleanL = validateSchema(l, SCHEMAS.list);
+            cleanL.id = String(l.id || '').slice(0, 64);
+
+            cleanL.bugs = (Array.isArray(l.bugs) ? l.bugs : []).map(b => {
+                const cleanB = validateSchema(b, SCHEMAS.bug);
+                cleanB.id = String(b.id || '').slice(0, 64);
+
+                // Preserve server-handled resolution metadata (set by /resolve flow)
+                ['resolvedBy', 'resolvedAt', 'resolvedVersion', 'resolvedByUser'].forEach(k => {
+                    if (b[k]) cleanB[k] = String(b[k]).slice(0, 100);
+                });
+
+                cleanB.comments = (Array.isArray(b.comments) ? b.comments : []).slice(0, 500).map(c => {
+                    const out = {
+                        id: String(c.id || '').slice(0, 64),
+                        author: String(c.author || '').slice(0, 100),
+                        text: String(c.text || '').slice(0, 5000),
+                        createdAt: String(c.createdAt || '').slice(0, 50),
+                    };
+                    if (c.editedAt) out.editedAt = String(c.editedAt).slice(0, 50);
+                    return out;
+                });
+
+                cleanB.followers = (Array.isArray(b.followers) ? b.followers : [])
+                    .slice(0, 100)
+                    .map(f => String(f).slice(0, 100));
+
+                return cleanB;
+            });
+            return cleanL;
+        });
+        out.versions.push(cleanV);
+    }
+    return out;
+}
+
 function getLocalIP() {
     const nets = os.networkInterfaces();
     for (const name of Object.keys(nets)) {
@@ -514,7 +635,16 @@ const server = http.createServer(async (req, res) => {
         }
         try {
             console.log('[Notify] POST /api/store recibido de', session.username);
-            const data = await parseBody(req);
+            const rawData = await parseBody(req);
+            let data;
+            try {
+                data = sanitizeStore(rawData);
+            } catch (schemaErr) {
+                console.warn('[Schema] /api/store rejected:', schemaErr.message);
+                res.writeHead(400, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ error: schemaErr.message }));
+                return;
+            }
             const oldStore = readJSON(STORE_FILE);
             // (split save happens after notifications below)
             console.log('[Notify] oldStore:', !!oldStore, '| versions:', !!(data && data.versions));
@@ -858,7 +988,23 @@ const server = http.createServer(async (req, res) => {
         }
         try {
             const bugId = pathname.split('/')[3];
-            const { action, username } = await parseBody(req);
+            const cleaned = await (async () => {
+                try {
+                    return validateSchema(await parseBody(req), SCHEMAS.follower_action);
+                } catch (schemaErr) {
+                    res.writeHead(400, { 'Content-Type': 'application/json' });
+                    res.end(JSON.stringify({ error: schemaErr.message }));
+                    return null;
+                }
+            })();
+            if (cleaned === null) return; // schema threw, response already sent
+            const { action, username } = cleaned;
+            if (!action) {
+                // action was present in body but failed enum validation (reset to '')
+                res.writeHead(400, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ error: 'Invalid action; expected one of: add, remove, toggle' }));
+                return;
+            }
 
             // Find the bug in store.json
             const store = readJSON(STORE_FILE);
@@ -1145,7 +1291,15 @@ const server = http.createServer(async (req, res) => {
             return;
         }
         try {
-            const { bugId, commentId, text } = await parseBody(req);
+            let bugId, commentId, text;
+            try {
+                const cleaned = validateSchema(await parseBody(req), SCHEMAS.comment_edit);
+                ({ bugId, commentId, text } = cleaned);
+            } catch (schemaErr) {
+                res.writeHead(400, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ error: schemaErr.message }));
+                return;
+            }
             if (!bugId || !commentId || !text || !text.trim()) {
                 res.writeHead(400, { 'Content-Type': 'application/json' });
                 res.end(JSON.stringify({ error: 'Faltan campos requeridos' }));
