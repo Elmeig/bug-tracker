@@ -256,12 +256,19 @@ const SCHEMAS = {
     bug: {
         title: { type: 'string', maxLength: 200, required: true },
         description: { type: 'string', maxLength: 10000, default: '' },
-        priority: { type: 'string', enum: ['low', 'medium', 'high', 'critical'], default: 'low' },
-        status: { type: 'string', enum: ['open', 'in-progress', 'resolved'], default: 'open' },
+        priority: { type: 'string', enum: ['low', 'medium', 'high', 'critical'], default: 'medium' },
+        status: { type: 'string', enum: ['open', 'in-progress', 'resolved', 'passed', 'failed'], default: 'open' },
         tags: { type: 'array', maxLength: 50, default: [] },
         locked: { type: 'boolean', default: false },
-        createdBy: { type: 'string', maxLength: 64, default: '' },
-        createdAt: { type: 'string', maxLength: 50, default: '' }
+        // Free-text business fields (Bug Tracker uses these heavily — keep generous caps)
+        assignee: { type: 'string', maxLength: 500, default: '' },     // comma-separated names
+        client: { type: 'string', maxLength: 200, default: '' },
+        swVersion: { type: 'string', maxLength: 100, default: '' },
+        // Audit / authorship
+        createdBy: { type: 'string', maxLength: 100, default: '' },
+        createdByUser: { type: 'string', maxLength: 100, default: '' },
+        createdAt: { type: 'string', maxLength: 50, default: '' },
+        updatedAt: { type: 'string', maxLength: 50, default: '' }
     },
     list: {
         name: { type: 'string', maxLength: 100, required: true },
