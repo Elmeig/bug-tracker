@@ -377,31 +377,40 @@ function htmlEscape(s) {
 }
 
 const PRIORITY_BADGES = {
-    critical: { label: 'Crítica', bg: '#dc2626', fg: '#ffffff' },
-    high:     { label: 'Alta',    bg: '#f97316', fg: '#ffffff' },
-    medium:   { label: 'Media',   bg: '#eab308', fg: '#111111' },
-    low:      { label: 'Baja',    bg: '#22c55e', fg: '#ffffff' }
+    critical: { label: 'Crítica', bg: '#fee2e2', fg: '#991b1b', dot: '#dc2626' },
+    high:     { label: 'Alta',    bg: '#ffedd5', fg: '#9a3412', dot: '#f97316' },
+    medium:   { label: 'Media',   bg: '#fef3c7', fg: '#854d0e', dot: '#eab308' },
+    low:      { label: 'Baja',    bg: '#dcfce7', fg: '#166534', dot: '#22c55e' }
 };
 const STATUS_BADGES = {
-    'open':        { label: 'Nuevo',     bg: '#3b82f6', fg: '#ffffff' },
-    'in-progress': { label: 'En curso',  bg: '#f59e0b', fg: '#111111' },
-    'passed':      { label: 'Pasado',    bg: '#22c55e', fg: '#ffffff' },
-    'failed':      { label: 'Fallido',   bg: '#dc2626', fg: '#ffffff' },
-    'resolved':    { label: 'Resuelto',  bg: '#10b981', fg: '#ffffff' }
+    'open':        { label: 'Nuevo',     bg: '#dbeafe', fg: '#1e40af', dot: '#3b82f6' },
+    'in-progress': { label: 'En curso',  bg: '#fef3c7', fg: '#854d0e', dot: '#f59e0b' },
+    'passed':      { label: 'Pasado',    bg: '#dcfce7', fg: '#166534', dot: '#22c55e' },
+    'failed':      { label: 'Fallido',   bg: '#fee2e2', fg: '#991b1b', dot: '#dc2626' },
+    'resolved':    { label: 'Resuelto',  bg: '#d1fae5', fg: '#065f46', dot: '#10b981' }
 };
 
-function badge(label, bg, fg) {
+function badge(label, bg, fg, dot) {
     if (!label) return '';
-    return '<span style="display:inline-block;background:' + bg + ';color:' + fg + ';padding:3px 10px;border-radius:12px;font-size:12px;font-weight:600;letter-spacing:0.2px">' + htmlEscape(label) + '</span>';
+    // Soft "pill" badge with colored dot indicator. Uses border-radius:999px so
+    // even when clients clamp the radius it still ends up rounded. Falls back
+    // gracefully on Outlook (which strips radius) to a tinted rectangle.
+    const dotHtml = dot
+        ? '<span style="display:inline-block;width:7px;height:7px;background:' + dot + ';border-radius:999px;margin-right:7px;vertical-align:middle"></span>'
+        : '';
+    return '<span style="display:inline-block;background:' + bg + ';color:' + fg + ';padding:5px 13px;border-radius:999px;font-size:12px;font-weight:600;letter-spacing:0.3px;line-height:1;vertical-align:middle">' +
+        dotHtml +
+        '<span style="vertical-align:middle">' + htmlEscape(label) + '</span>' +
+        '</span>';
 }
 
 function priorityBadge(p) {
     const b = PRIORITY_BADGES[p];
-    return b ? badge(b.label, b.bg, b.fg) : '';
+    return b ? badge(b.label, b.bg, b.fg, b.dot) : '';
 }
 function statusBadge(s) {
     const b = STATUS_BADGES[s];
-    return b ? badge(b.label, b.bg, b.fg) : '';
+    return b ? badge(b.label, b.bg, b.fg, b.dot) : '';
 }
 
 // Render a single task "card" inside the email
@@ -461,7 +470,7 @@ function renderTaskCard(opts) {
         changesHtml +
         descHtml +
         commentsHtml +
-        (opts.bugId ? '<div style="margin-top:20px"><a href="' + taskUrl + '" style="display:inline-block;background:' + BRAND_COLOR + ';color:#ffffff;text-decoration:none;padding:11px 22px;border-radius:6px;font-size:14px;font-weight:600">Ver tarea →</a></div>' : '') +
+        (opts.bugId ? '<div style="margin-top:22px"><!--[if mso]><v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" xmlns:w="urn:schemas-microsoft-com:office:word" href="' + taskUrl + '" style="height:44px;v-text-anchor:middle;width:160px;" arcsize="50%" stroke="f" fillcolor="' + BRAND_COLOR + '"><w:anchorlock/><center style="color:#ffffff;font-family:Arial,sans-serif;font-size:14px;font-weight:600;">Ver tarea →</center></v:roundrect><![endif]--><!--[if !mso]><!--> <a href="' + taskUrl + '" style="display:inline-block;background:' + BRAND_COLOR + ';color:#ffffff !important;text-decoration:none;padding:13px 28px;border-radius:999px;font-size:14px;font-weight:600;letter-spacing:0.3px;box-shadow:0 2px 6px rgba(99,102,241,0.25);mso-hide:all">Ver tarea →</a> <!--<![endif]--></div>' : '') +
         '</td></tr></table>';
 }
 
