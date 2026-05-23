@@ -888,8 +888,16 @@ body {
     .modal { width: 95%; max-height: 85vh; display: flex; flex-direction: column; }
     .modal-lg, .modal-xl { width: 98%; }
     .modal-body { overflow-y: auto; flex: 1; padding: 0.8rem; }
-    .modal-header { padding: 0.7rem 0.8rem; }
-    .modal-header h3 { font-size: 0.9rem; }
+    .modal-header { padding: 0.7rem 0.8rem; gap: 0.6rem; }
+    .modal-header h3 { font-size: 0.9rem; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    /* Detail-modal edit/reopen buttons: smaller + icon-only on phone */
+    #modal-detail .modal-header { gap: 0.5rem; }
+    #modal-detail #btn-detail-edit,
+    #modal-detail #btn-detail-reopen {
+        font-size: 0.7rem !important;
+        padding: 0.25rem 0.5rem !important;
+        flex-shrink: 0;
+    }
     .modal-footer { padding: 0.6rem 0.8rem; }
     .form-group { margin-bottom: 0.6rem; }
     .form-group label { font-size: 0.7rem; }
