@@ -415,7 +415,7 @@ function renderTaskCard(opts) {
     if (opts.client)     metaCells.push('<strong style="color:#64748b">Cliente:</strong> ' + htmlEscape(opts.client));
     if (opts.swVersion)  metaCells.push('<strong style="color:#64748b">Versión SW:</strong> ' + htmlEscape(opts.swVersion));
     const metaHtml = metaCells.length
-        ? '<div style="font-size:13px;color:#475569;margin-top:10px;line-height:1.7">' + metaCells.join(' &nbsp;·&nbsp; ') + '</div>'
+        ? '<div style="font-size:14px;color:#475569;margin-top:12px;line-height:1.7">' + metaCells.join(' &nbsp;·&nbsp; ') + '</div>'
         : '';
 
     let badgesHtml = '';
@@ -438,30 +438,30 @@ function renderTaskCard(opts) {
     let descHtml = '';
     if (opts.description) {
         const desc = String(opts.description).slice(0, 600);
-        descHtml = '<div style="margin-top:14px;padding:12px 14px;background:#f8fafc;border-left:3px solid #cbd5e1;border-radius:4px;font-size:13px;color:#334155;line-height:1.55;white-space:pre-wrap">' + htmlEscape(desc) + (opts.description.length > 600 ? '…' : '') + '</div>';
+        descHtml = '<div style="margin-top:16px;padding:14px 16px;background:#f8fafc;border-left:3px solid #cbd5e1;border-radius:4px;font-size:14px;color:#334155;line-height:1.6;white-space:pre-wrap">' + htmlEscape(desc) + (opts.description.length > 600 ? '…' : '') + '</div>';
     }
 
     let commentsHtml = '';
     if (opts.comments && opts.comments.length) {
-        commentsHtml = '<div style="margin-top:14px"><div style="font-size:12px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px">💬 ' + (opts.comments.length === 1 ? 'Comentario' : opts.comments.length + ' comentarios') + '</div>' +
+        commentsHtml = '<div style="margin-top:16px"><div style="font-size:12px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.6px;margin-bottom:8px">💬 ' + (opts.comments.length === 1 ? 'Comentario' : opts.comments.length + ' comentarios') + '</div>' +
             opts.comments.map(cm =>
-                '<div style="background:#eef2ff;border-left:3px solid ' + BRAND_COLOR + ';padding:10px 14px;border-radius:4px;margin-bottom:6px;font-size:13px;line-height:1.5;color:#1e293b">' +
-                '<div style="font-weight:600;color:' + BRAND_DARK + ';margin-bottom:4px">' + htmlEscape(cm.author || 'Anónimo') + '</div>' +
+                '<div style="background:#eef2ff;border-left:3px solid ' + BRAND_COLOR + ';padding:12px 16px;border-radius:4px;margin-bottom:8px;font-size:14px;line-height:1.55;color:#1e293b">' +
+                '<div style="font-weight:600;color:' + BRAND_DARK + ';margin-bottom:6px;font-size:13px">' + htmlEscape(cm.author || 'Anónimo') + '</div>' +
                 '<div style="white-space:pre-wrap">' + htmlEscape(String(cm.text || '').slice(0, 600)) + '</div>' +
                 '</div>'
             ).join('') +
             '</div>';
     }
 
-    return '<table cellpadding="0" cellspacing="0" border="0" style="width:100%;background:#ffffff;border:1px solid #e2e8f0;border-radius:8px;margin:0 0 16px 0">' +
-        '<tr><td style="padding:18px 22px">' +
-        '<div style="font-size:17px;font-weight:700;color:#0f172a;line-height:1.35">' + htmlEscape(opts.title || '(sin título)') + '</div>' +
+    return '<table cellpadding="0" cellspacing="0" border="0" style="width:100%;background:#ffffff;border:1px solid #e2e8f0;border-radius:10px;margin:0 0 20px 0">' +
+        '<tr><td style="padding:24px 28px">' +
+        '<div style="font-size:19px;font-weight:700;color:#0f172a;line-height:1.35">' + htmlEscape(opts.title || '(sin título)') + '</div>' +
         badgesHtml +
         metaHtml +
         changesHtml +
         descHtml +
         commentsHtml +
-        (opts.bugId ? '<div style="margin-top:16px"><a href="' + taskUrl + '" style="display:inline-block;background:' + BRAND_COLOR + ';color:#ffffff;text-decoration:none;padding:9px 18px;border-radius:6px;font-size:13px;font-weight:600">Ver tarea →</a></div>' : '') +
+        (opts.bugId ? '<div style="margin-top:20px"><a href="' + taskUrl + '" style="display:inline-block;background:' + BRAND_COLOR + ';color:#ffffff;text-decoration:none;padding:11px 22px;border-radius:6px;font-size:14px;font-weight:600">Ver tarea →</a></div>' : '') +
         '</td></tr></table>';
 }
 
@@ -470,31 +470,35 @@ function renderEmailShell(opts) {
     // opts: { recipientName, headerEmoji, headerTitle, headerSubtitle, bodyHtml, unfollowLink, footerNote }
     const greeting = opts.recipientName ? 'Hola ' + htmlEscape(opts.recipientName.split(' ')[0]) + ',' : 'Hola,';
     const unfollowFooter = opts.unfollowLink
-        ? '<p style="margin:6px 0 0 0;font-size:11px;color:#94a3b8"><a href="' + opts.unfollowLink + '" style="color:#94a3b8;text-decoration:underline">Dejar de recibir notificaciones de esta tarea</a></p>'
+        ? '<p style="margin:8px 0 0 0;font-size:12px;color:#94a3b8"><a href="' + opts.unfollowLink + '" style="color:#94a3b8;text-decoration:underline">Dejar de recibir notificaciones de esta tarea</a></p>'
         : '';
-    return '<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>' +
-        '<body style="margin:0;padding:0;background:#f1f5f9;font-family:-apple-system,BlinkMacSystemFont,\'Segoe UI\',Arial,sans-serif">' +
-        '<table cellpadding="0" cellspacing="0" border="0" width="100%" style="background:#f1f5f9;padding:24px 12px">' +
+    return '<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">' +
+        '<style>@media only screen and (max-width:640px){.bt-shell{border-radius:0 !important}.bt-header,.bt-body,.bt-footer{padding-left:20px !important;padding-right:20px !important}.bt-title{font-size:20px !important}}</style>' +
+        '</head>' +
+        '<body style="margin:0;padding:0;background:#eef2f7;font-family:-apple-system,BlinkMacSystemFont,\'Segoe UI\',Roboto,Arial,sans-serif">' +
+        '<table cellpadding="0" cellspacing="0" border="0" width="100%" style="background:#eef2f7;padding:32px 12px">' +
         '<tr><td align="center">' +
-        '<table cellpadding="0" cellspacing="0" border="0" style="max-width:640px;width:100%;background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 4px 12px rgba(15,23,42,0.06)">' +
+        '<table class="bt-shell" cellpadding="0" cellspacing="0" border="0" style="max-width:760px;width:100%;background:#ffffff;border-radius:14px;overflow:hidden;box-shadow:0 8px 28px rgba(15,23,42,0.08)">' +
         // Header
-        '<tr><td style="background:linear-gradient(135deg,' + BRAND_COLOR + ' 0%,' + BRAND_DARK + ' 100%);padding:24px 28px;color:#ffffff">' +
-        '<div style="font-size:13px;font-weight:600;letter-spacing:1px;opacity:0.85;text-transform:uppercase">🐛 Bug Tracker</div>' +
-        '<div style="font-size:22px;font-weight:700;margin-top:8px;line-height:1.3">' + (opts.headerEmoji || '🔔') + ' ' + htmlEscape(opts.headerTitle) + '</div>' +
-        (opts.headerSubtitle ? '<div style="font-size:14px;margin-top:6px;opacity:0.92;line-height:1.4">' + opts.headerSubtitle + '</div>' : '') +
+        '<tr><td class="bt-header" style="background:linear-gradient(135deg,' + BRAND_COLOR + ' 0%,' + BRAND_DARK + ' 100%);padding:32px 40px;color:#ffffff">' +
+        '<div style="font-size:13px;font-weight:600;letter-spacing:1.2px;opacity:0.85;text-transform:uppercase">🐛 Bug Tracker</div>' +
+        '<div class="bt-title" style="font-size:26px;font-weight:700;margin-top:10px;line-height:1.3">' + (opts.headerEmoji || '🔔') + ' ' + htmlEscape(opts.headerTitle) + '</div>' +
+        (opts.headerSubtitle ? '<div style="font-size:15px;margin-top:8px;opacity:0.94;line-height:1.5">' + opts.headerSubtitle + '</div>' : '') +
         '</td></tr>' +
         // Body
-        '<tr><td style="padding:26px 28px;background:#f8fafc">' +
-        '<p style="margin:0 0 16px 0;font-size:15px;color:#334155;line-height:1.55">' + greeting + '</p>' +
+        '<tr><td class="bt-body" style="padding:32px 40px;background:#f8fafc">' +
+        '<p style="margin:0 0 20px 0;font-size:16px;color:#334155;line-height:1.55">' + greeting + '</p>' +
         opts.bodyHtml +
         '</td></tr>' +
         // Footer
-        '<tr><td style="padding:18px 28px;background:#f1f5f9;border-top:1px solid #e2e8f0">' +
-        (opts.footerNote ? '<p style="margin:0 0 8px 0;font-size:12px;color:#64748b;line-height:1.5">' + opts.footerNote + '</p>' : '') +
-        '<p style="margin:0;font-size:12px;color:#94a3b8">Este mensaje fue enviado automáticamente por Bug Tracker.</p>' +
+        '<tr><td class="bt-footer" style="padding:22px 40px;background:#f1f5f9;border-top:1px solid #e2e8f0">' +
+        (opts.footerNote ? '<p style="margin:0 0 10px 0;font-size:13px;color:#64748b;line-height:1.55">' + opts.footerNote + '</p>' : '') +
+        '<p style="margin:0;font-size:12px;color:#94a3b8;line-height:1.5">Este mensaje fue enviado automáticamente por <strong style="color:#64748b">Bug Tracker</strong>.</p>' +
         unfollowFooter +
         '</td></tr>' +
         '</table>' +
+        // Tiny attribution line below the card
+        '<table cellpadding="0" cellspacing="0" border="0" style="max-width:760px;width:100%;margin-top:16px"><tr><td align="center" style="font-size:11px;color:#94a3b8;letter-spacing:0.3px">Bug Tracker · Asistencia Técnica</td></tr></table>' +
         '</td></tr></table></body></html>';
 }
 
@@ -1158,8 +1162,8 @@ const server = http.createServer(async (req, res) => {
                                 // Inject the intro just inside the card (before title)
                                 const card = renderTaskCard(cardOpts);
                                 return card.replace(
-                                    '<div style="font-size:17px;font-weight:700;color:#0f172a;',
-                                    intro + '<div style="font-size:17px;font-weight:700;color:#0f172a;'
+                                    '<div style="font-size:19px;font-weight:700;color:#0f172a;',
+                                    intro + '<div style="font-size:19px;font-weight:700;color:#0f172a;'
                                 );
                             }).join('');
 
