@@ -480,10 +480,10 @@ function renderEmailShell(opts) {
         '<tr><td align="center">' +
         '<table class="bt-shell" cellpadding="0" cellspacing="0" border="0" style="max-width:760px;width:100%;background:#ffffff;border-radius:14px;overflow:hidden;box-shadow:0 8px 28px rgba(15,23,42,0.08)">' +
         // Header
-        '<tr><td class="bt-header" style="background:linear-gradient(135deg,' + BRAND_COLOR + ' 0%,' + BRAND_DARK + ' 100%);padding:32px 40px;color:#ffffff">' +
-        '<div style="font-size:13px;font-weight:600;letter-spacing:1.2px;opacity:0.85;text-transform:uppercase">🐛 Bug Tracker</div>' +
-        '<div class="bt-title" style="font-size:26px;font-weight:700;margin-top:10px;line-height:1.3">' + (opts.headerEmoji || '🔔') + ' ' + htmlEscape(opts.headerTitle) + '</div>' +
-        (opts.headerSubtitle ? '<div style="font-size:15px;margin-top:8px;opacity:0.94;line-height:1.5">' + opts.headerSubtitle + '</div>' : '') +
+        '<tr><td class="bt-header" bgcolor="' + BRAND_DARK + '" style="background-color:' + BRAND_DARK + ';background-image:linear-gradient(135deg,' + BRAND_COLOR + ' 0%,' + BRAND_DARK + ' 100%);background:' + BRAND_DARK + ' linear-gradient(135deg,' + BRAND_COLOR + ' 0%,' + BRAND_DARK + ' 100%);padding:32px 40px;color:#ffffff !important">' +
+        '<div style="font-size:13px;font-weight:600;letter-spacing:1.2px;opacity:0.85;text-transform:uppercase;color:#ffffff !important">🐛 Bug Tracker</div>' +
+        '<div class="bt-title" style="font-size:26px;font-weight:700;margin-top:10px;line-height:1.3;color:#ffffff !important">' + (opts.headerEmoji || '🔔') + ' ' + htmlEscape(opts.headerTitle) + '</div>' +
+        (opts.headerSubtitle ? '<div style="font-size:15px;margin-top:8px;line-height:1.5;color:#ffffff !important;opacity:0.94">' + opts.headerSubtitle + '</div>' : '') +
         '</td></tr>' +
         // Body
         '<tr><td class="bt-body" style="padding:32px 40px;background:#f8fafc">' +
