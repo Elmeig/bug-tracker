@@ -1231,85 +1231,87 @@ function populateBugDatalists() {
         getAssignees(b).forEach(a => { if (a && a.trim()) assignees.add(a.trim()); });
     });
     const sortFn = (a, b) => a.localeCompare(b, 'es', { sensitivity: 'base' });
-    const cList = $('#bug-client-list');
-    if (cList) cList.innerHTML = [...clients].sort(sortFn).map(c => `<option value="${escapeHtml(c)}"></option>`).join('');
-    // Assignee uses custom per-segment autocomplete
+    bugClientOptions = [...clients].sort(sortFn);
     bugAssigneeOptions = [...assignees].sort(sortFn);
 }
 
+let bugClientOptions = [];
 let bugAssigneeOptions = [];
-let bugAssigneeActiveIdx = -1;
 
-function getAssigneeSegment(input) {
-    const val = input.value;
-    const pos = input.selectionStart ?? val.length;
-    const before = val.slice(0, pos);
-    const lastComma = before.lastIndexOf(',');
-    const segStart = lastComma === -1 ? 0 : lastComma + 1;
-    const after = val.slice(pos);
-    const nextComma = after.indexOf(',');
-    const segEnd = nextComma === -1 ? val.length : pos + nextComma;
-    return { start: segStart, end: segEnd, text: val.slice(segStart, segEnd).trim(), raw: val.slice(segStart, segEnd) };
-}
-
-function showAssigneeSuggestions() {
-    const input = $('#bug-assignee');
-    const box = $('#bug-assignee-suggest');
-    if (!input || !box) return;
-    const seg = getAssigneeSegment(input);
-    const q = seg.text.toLowerCase();
-    // Already-used names in other segments
-    const used = new Set(input.value.split(',').map(s => s.trim().toLowerCase()).filter(Boolean));
-    used.delete(q); // current segment not "used"
-    const matches = bugAssigneeOptions.filter(o => !used.has(o.toLowerCase()) && (q === '' || o.toLowerCase().includes(q))).slice(0, 8);
-    if (matches.length === 0) { box.style.display = 'none'; box.innerHTML = ''; return; }
-    bugAssigneeActiveIdx = -1;
-    box.innerHTML = matches.map((m, i) => `<div class="autocomplete-item" data-idx="${i}" data-val="${escapeHtml(m)}">${escapeHtml(m)}</div>`).join('');
-    box.style.display = 'block';
-}
-
-function pickAssigneeSuggestion(val) {
-    const input = $('#bug-assignee');
-    const seg = getAssigneeSegment(input);
-    const prefix = input.value.slice(0, seg.start);
-    const suffix = input.value.slice(seg.end);
-    // Add leading space after comma if needed
-    const leadSpace = (prefix.length > 0 && !prefix.endsWith(' ')) ? ' ' : '';
-    // Append ", " so user can type next name immediately
-    const trailing = suffix.trim() === '' ? ', ' : '';
-    const newVal = prefix + leadSpace + val + trailing + suffix;
-    input.value = newVal;
-    const caret = (prefix + leadSpace + val + trailing).length;
-    input.setSelectionRange(caret, caret);
-    input.focus();
-    $('#bug-assignee-suggest').style.display = 'none';
-}
-
-function setupAssigneeAutocomplete() {
-    const input = $('#bug-assignee');
-    const box = $('#bug-assignee-suggest');
+// Generic autocomplete attach.
+// opts: { input, box, getOptions, multi (bool) }
+function attachAutocomplete(opts) {
+    const { input, box, getOptions, multi } = opts;
     if (!input || !box || input._acBound) return;
     input._acBound = true;
-    input.addEventListener('input', showAssigneeSuggestions);
-    input.addEventListener('focus', showAssigneeSuggestions);
-    input.addEventListener('click', showAssigneeSuggestions);
+    let activeIdx = -1;
+
+    function getSegment() {
+        if (!multi) return { start: 0, end: input.value.length, text: input.value.trim() };
+        const val = input.value;
+        const pos = input.selectionStart ?? val.length;
+        const before = val.slice(0, pos);
+        const lastComma = before.lastIndexOf(',');
+        const segStart = lastComma === -1 ? 0 : lastComma + 1;
+        const after = val.slice(pos);
+        const nextComma = after.indexOf(',');
+        const segEnd = nextComma === -1 ? val.length : pos + nextComma;
+        return { start: segStart, end: segEnd, text: val.slice(segStart, segEnd).trim() };
+    }
+
+    function show() {
+        const seg = getSegment();
+        const q = seg.text.toLowerCase();
+        const used = multi
+            ? new Set(input.value.split(',').map(s => s.trim().toLowerCase()).filter(Boolean))
+            : new Set();
+        if (multi) used.delete(q);
+        const matches = getOptions()
+            .filter(o => !used.has(o.toLowerCase()) && (q === '' || o.toLowerCase().includes(q)))
+            .slice(0, 8);
+        if (matches.length === 0) { box.style.display = 'none'; box.innerHTML = ''; activeIdx = -1; return; }
+        activeIdx = -1;
+        box.innerHTML = matches
+            .map((m, i) => `<div class="autocomplete-item" data-idx="${i}" data-val="${escapeHtml(m)}">${escapeHtml(m)}</div>`)
+            .join('');
+        box.style.display = 'block';
+    }
+
+    function pick(val) {
+        if (!multi) {
+            input.value = val;
+        } else {
+            const seg = getSegment();
+            const prefix = input.value.slice(0, seg.start);
+            const suffix = input.value.slice(seg.end);
+            const leadSpace = (prefix.length > 0 && !prefix.endsWith(' ')) ? ' ' : '';
+            const trailing = suffix.trim() === '' ? ', ' : '';
+            input.value = prefix + leadSpace + val + trailing + suffix;
+            const caret = (prefix + leadSpace + val + trailing).length;
+            input.setSelectionRange(caret, caret);
+        }
+        input.focus();
+        box.style.display = 'none';
+    }
+
+    input.addEventListener('input', show);
+    input.addEventListener('focus', show);
+    input.addEventListener('click', show);
     input.addEventListener('keyup', (e) => {
-        if (['ArrowUp','ArrowDown','Enter','Escape'].includes(e.key)) return;
-        // Re-show on caret movement keys
-        if (['ArrowLeft','ArrowRight','Home','End'].includes(e.key)) showAssigneeSuggestions();
+        if (['ArrowLeft','ArrowRight','Home','End'].includes(e.key)) show();
     });
     input.addEventListener('keydown', (e) => {
         const items = box.querySelectorAll('.autocomplete-item');
         if (box.style.display === 'none' || items.length === 0) return;
         if (e.key === 'ArrowDown') {
             e.preventDefault();
-            bugAssigneeActiveIdx = (bugAssigneeActiveIdx + 1) % items.length;
+            activeIdx = (activeIdx + 1) % items.length;
         } else if (e.key === 'ArrowUp') {
             e.preventDefault();
-            bugAssigneeActiveIdx = (bugAssigneeActiveIdx - 1 + items.length) % items.length;
-        } else if (e.key === 'Enter' && bugAssigneeActiveIdx >= 0) {
+            activeIdx = (activeIdx - 1 + items.length) % items.length;
+        } else if (e.key === 'Enter' && activeIdx >= 0) {
             e.preventDefault();
-            pickAssigneeSuggestion(items[bugAssigneeActiveIdx].dataset.val);
+            pick(items[activeIdx].dataset.val);
             return;
         } else if (e.key === 'Escape') {
             box.style.display = 'none';
@@ -1317,16 +1319,31 @@ function setupAssigneeAutocomplete() {
         } else {
             return;
         }
-        items.forEach((it, i) => it.classList.toggle('active', i === bugAssigneeActiveIdx));
-        items[bugAssigneeActiveIdx].scrollIntoView({ block: 'nearest' });
+        items.forEach((it, i) => it.classList.toggle('active', i === activeIdx));
+        items[activeIdx].scrollIntoView({ block: 'nearest' });
     });
     box.addEventListener('mousedown', (e) => {
         const it = e.target.closest('.autocomplete-item');
         if (!it) return;
         e.preventDefault();
-        pickAssigneeSuggestion(it.dataset.val);
+        pick(it.dataset.val);
     });
     input.addEventListener('blur', () => setTimeout(() => { box.style.display = 'none'; }, 150));
+}
+
+function setupBugAutocompletes() {
+    attachAutocomplete({
+        input: $('#bug-client'),
+        box: $('#bug-client-suggest'),
+        getOptions: () => bugClientOptions,
+        multi: false
+    });
+    attachAutocomplete({
+        input: $('#bug-assignee'),
+        box: $('#bug-assignee-suggest'),
+        getOptions: () => bugAssigneeOptions,
+        multi: true
+    });
 }
 
 function openBugModalWithContext(bugId, versionId, listId) {
@@ -1334,7 +1351,7 @@ function openBugModalWithContext(bugId, versionId, listId) {
     editingVersionId = versionId;
     editingListId = listId;
     populateBugDatalists();
-    setupAssigneeAutocomplete();
+    setupBugAutocompletes();
     if (bugId) {
         const bug = Store.getBug(versionId, listId, bugId);
         if (!bug) return;

@@ -996,22 +996,22 @@ body {
     left: 0;
     right: 0;
     z-index: 1000;
-    background: var(--bg-card, #fff);
-    border: 1px solid var(--border, #ddd);
+    background: var(--bg-card);
+    border: 1px solid var(--accent);
     border-top: none;
     border-radius: 0 0 6px 6px;
     max-height: 180px;
     overflow-y: auto;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.35);
 }
 .autocomplete-item {
     padding: 0.5rem 0.75rem;
     cursor: pointer;
     font-size: 0.9rem;
-    color: var(--text, #222);
+    color: var(--text-primary);
 }
 .autocomplete-item:hover,
 .autocomplete-item.active {
-    background: var(--accent, #4a90e2);
+    background: var(--accent);
     color: #fff;
 }

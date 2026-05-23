@@ -427,8 +427,10 @@
                 <div class="form-row">
                     <div class="form-group flex-1">
                         <label for="bug-client">Cliente (opcional)</label>
-                        <input type="text" id="bug-client" placeholder="Nombre del cliente..." autocomplete="off" list="bug-client-list">
-                        <datalist id="bug-client-list"></datalist>
+                        <div class="autocomplete-wrap" style="position:relative">
+                            <input type="text" id="bug-client" placeholder="Nombre del cliente..." autocomplete="off">
+                            <div id="bug-client-suggest" class="autocomplete-list" style="display:none"></div>
+                        </div>
                     </div>
                     <div class="form-group flex-1">
                         <label for="bug-sw-version">Versión SW (opcional)</label>
