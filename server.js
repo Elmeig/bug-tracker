@@ -377,40 +377,38 @@ function htmlEscape(s) {
 }
 
 const PRIORITY_BADGES = {
-    critical: { label: 'Crítica', bg: '#fee2e2', fg: '#991b1b', dot: '#dc2626' },
-    high:     { label: 'Alta',    bg: '#ffedd5', fg: '#9a3412', dot: '#f97316' },
-    medium:   { label: 'Media',   bg: '#fef3c7', fg: '#854d0e', dot: '#eab308' },
-    low:      { label: 'Baja',    bg: '#dcfce7', fg: '#166534', dot: '#22c55e' }
+    critical: { label: 'Crítica', bg: '#fee2e2', fg: '#991b1b', dot: '#dc2626', slug: 'critical' },
+    high:     { label: 'Alta',    bg: '#ffedd5', fg: '#9a3412', dot: '#f97316', slug: 'high' },
+    medium:   { label: 'Media',   bg: '#fef3c7', fg: '#854d0e', dot: '#eab308', slug: 'medium' },
+    low:      { label: 'Baja',    bg: '#dcfce7', fg: '#166534', dot: '#22c55e', slug: 'low' }
 };
 const STATUS_BADGES = {
-    'open':        { label: 'Nuevo',     bg: '#dbeafe', fg: '#1e40af', dot: '#3b82f6' },
-    'in-progress': { label: 'En curso',  bg: '#fef3c7', fg: '#854d0e', dot: '#f59e0b' },
-    'passed':      { label: 'Pasado',    bg: '#dcfce7', fg: '#166534', dot: '#22c55e' },
-    'failed':      { label: 'Fallido',   bg: '#fee2e2', fg: '#991b1b', dot: '#dc2626' },
-    'resolved':    { label: 'Resuelto',  bg: '#d1fae5', fg: '#065f46', dot: '#10b981' }
+    'open':        { label: 'Nuevo',     bg: '#dbeafe', fg: '#1e40af', dot: '#3b82f6', slug: 'open' },
+    'in-progress': { label: 'En curso',  bg: '#fef3c7', fg: '#854d0e', dot: '#f59e0b', slug: 'inprogress' },
+    'passed':      { label: 'Pasado',    bg: '#dcfce7', fg: '#166534', dot: '#22c55e', slug: 'passed' },
+    'failed':      { label: 'Fallido',   bg: '#fee2e2', fg: '#991b1b', dot: '#dc2626', slug: 'failed' },
+    'resolved':    { label: 'Resuelto',  bg: '#d1fae5', fg: '#065f46', dot: '#10b981', slug: 'resolved' }
 };
 
-function badge(label, bg, fg, dot) {
-    if (!label) return '';
-    // Soft "pill" badge with colored dot indicator. Uses border-radius:999px so
-    // even when clients clamp the radius it still ends up rounded. Falls back
-    // gracefully on Outlook (which strips radius) to a tinted rectangle.
-    const dotHtml = dot
-        ? '<span style="display:inline-block;width:7px;height:7px;background:' + dot + ';border-radius:999px;margin-right:7px;vertical-align:middle"></span>'
-        : '';
-    return '<span style="display:inline-block;background:' + bg + ';color:' + fg + ';padding:5px 13px;border-radius:999px;font-size:12px;font-weight:600;letter-spacing:0.3px;line-height:1;vertical-align:middle">' +
-        dotHtml +
-        '<span style="vertical-align:middle">' + htmlEscape(label) + '</span>' +
+// Build a badge that renders TWO ways:
+//   Desktop (default): "<dim>Prioridad:</dim> <bold colored>Alta</bold>"  — clean text only
+//   Mobile (@media):   colored pill with dot indicator (label prefix hidden)
+// The mobile pill style is added by classes in renderEmailShell's <style> block.
+function badge(item, kind) {
+    if (!item) return '';
+    const prefix = kind === 'priority' ? 'Prioridad: ' : kind === 'status' ? 'Estado: ' : '';
+    return '<span class="bt-pill bt-pill-' + item.slug + '" style="color:' + item.fg + ';font-weight:700;font-size:14px;letter-spacing:0.2px;line-height:1.6;vertical-align:middle">' +
+        (prefix ? '<span class="bt-pill-prefix" style="color:#64748b;font-weight:500">' + prefix + '</span>' : '') +
+        '<span class="bt-pill-dot" style="display:none;width:7px;height:7px;background:' + item.dot + ';border-radius:999px;margin-right:7px;vertical-align:middle"></span>' +
+        '<span style="vertical-align:middle">' + htmlEscape(item.label) + '</span>' +
         '</span>';
 }
 
 function priorityBadge(p) {
-    const b = PRIORITY_BADGES[p];
-    return b ? badge(b.label, b.bg, b.fg, b.dot) : '';
+    return PRIORITY_BADGES[p] ? badge(PRIORITY_BADGES[p], 'priority') : '';
 }
 function statusBadge(s) {
-    const b = STATUS_BADGES[s];
-    return b ? badge(b.label, b.bg, b.fg, b.dot) : '';
+    return STATUS_BADGES[s] ? badge(STATUS_BADGES[s], 'status') : '';
 }
 
 // Render a single task "card" inside the email
@@ -430,7 +428,7 @@ function renderTaskCard(opts) {
     let badgesHtml = '';
     const pb = priorityBadge(opts.priority);
     const sb = statusBadge(opts.status);
-    if (pb || sb) badgesHtml = '<div style="margin-top:8px">' + [pb, sb].filter(Boolean).join('&nbsp;') + '</div>';
+    if (pb || sb) badgesHtml = '<div class="bt-badges" style="margin-top:10px">' + [pb, sb].filter(Boolean).join('<span class="bt-badge-sep" style="color:#cbd5e1;margin:0 12px">·</span>') + '</div>';
 
     let changesHtml = '';
     if (opts.changedFields && opts.changedFields.length) {
@@ -482,7 +480,26 @@ function renderEmailShell(opts) {
         ? '<p style="margin:8px 0 0 0;font-size:12px;color:#94a3b8"><a href="' + opts.unfollowLink + '" style="color:#94a3b8;text-decoration:underline">Dejar de recibir notificaciones de esta tarea</a></p>'
         : '';
     return '<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">' +
-        '<style>@media only screen and (max-width:640px){.bt-shell{border-radius:0 !important}.bt-header,.bt-body,.bt-footer{padding-left:20px !important;padding-right:20px !important}.bt-title{font-size:20px !important}}</style>' +
+        '<style>' +
+        // Mobile: restore the colorful pill badges + hide the desktop "Prioridad:/Estado:" prefix
+        '@media only screen and (max-width:640px){' +
+        '.bt-shell{border-radius:0 !important}' +
+        '.bt-header,.bt-body,.bt-footer{padding-left:20px !important;padding-right:20px !important}' +
+        '.bt-title{font-size:20px !important}' +
+        '.bt-pill{display:inline-block !important;padding:5px 13px !important;border-radius:999px !important;font-size:12px !important;font-weight:600 !important;line-height:1 !important}' +
+        '.bt-pill-prefix{display:none !important}' +
+        '.bt-pill-dot{display:inline-block !important}' +
+        '.bt-badge-sep{display:none !important}' +
+        '.bt-badges>span.bt-pill{margin-right:6px}' +
+        // pill backgrounds (mobile only)
+        '.bt-pill-critical,.bt-pill-failed{background:#fee2e2 !important}' +
+        '.bt-pill-high{background:#ffedd5 !important}' +
+        '.bt-pill-medium,.bt-pill-inprogress{background:#fef3c7 !important}' +
+        '.bt-pill-low,.bt-pill-passed{background:#dcfce7 !important}' +
+        '.bt-pill-open{background:#dbeafe !important}' +
+        '.bt-pill-resolved{background:#d1fae5 !important}' +
+        '}' +
+        '</style>' +
         '</head>' +
         '<body style="margin:0;padding:0;background:#eef2f7;font-family:-apple-system,BlinkMacSystemFont,\'Segoe UI\',Roboto,Arial,sans-serif">' +
         '<table cellpadding="0" cellspacing="0" border="0" width="100%" style="background:#eef2f7;padding:32px 12px">' +
