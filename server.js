@@ -363,6 +363,164 @@ function toHtml(text) {
     return '<div style="font-family:Arial,sans-serif;font-size:14px;color:#333;max-width:600px"><p>' + withLinks + '</p></div>';
 }
 
+// ===== EMAIL TEMPLATE (professional, brand-consistent) =====
+const APP_URL = 'https://bugtracker.tail51f3b0.ts.net';
+const BRAND_COLOR = '#6366f1';
+const BRAND_DARK = '#4f46e5';
+
+function htmlEscape(s) {
+    return String(s == null ? '' : s)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+}
+
+const PRIORITY_BADGES = {
+    critical: { label: 'Crítica', bg: '#dc2626', fg: '#ffffff' },
+    high:     { label: 'Alta',    bg: '#f97316', fg: '#ffffff' },
+    medium:   { label: 'Media',   bg: '#eab308', fg: '#111111' },
+    low:      { label: 'Baja',    bg: '#22c55e', fg: '#ffffff' }
+};
+const STATUS_BADGES = {
+    'open':        { label: 'Nuevo',     bg: '#3b82f6', fg: '#ffffff' },
+    'in-progress': { label: 'En curso',  bg: '#f59e0b', fg: '#111111' },
+    'passed':      { label: 'Pasado',    bg: '#22c55e', fg: '#ffffff' },
+    'failed':      { label: 'Fallido',   bg: '#dc2626', fg: '#ffffff' },
+    'resolved':    { label: 'Resuelto',  bg: '#10b981', fg: '#ffffff' }
+};
+
+function badge(label, bg, fg) {
+    if (!label) return '';
+    return '<span style="display:inline-block;background:' + bg + ';color:' + fg + ';padding:3px 10px;border-radius:12px;font-size:12px;font-weight:600;letter-spacing:0.2px">' + htmlEscape(label) + '</span>';
+}
+
+function priorityBadge(p) {
+    const b = PRIORITY_BADGES[p];
+    return b ? badge(b.label, b.bg, b.fg) : '';
+}
+function statusBadge(s) {
+    const b = STATUS_BADGES[s];
+    return b ? badge(b.label, b.bg, b.fg) : '';
+}
+
+// Render a single task "card" inside the email
+function renderTaskCard(opts) {
+    // opts: { title, listName, priority, status, assignee, client, swVersion, description, comments (array of {author,text}), bugId, changedFields, oldBug }
+    const taskUrl = APP_URL + (opts.bugId ? '/?bug=' + encodeURIComponent(opts.bugId) : '');
+    let meta = '<table cellpadding="0" cellspacing="0" border="0" style="width:100%;margin:12px 0 0 0"><tr>';
+    const metaCells = [];
+    if (opts.listName)   metaCells.push('<strong style="color:#64748b">Lista:</strong> ' + htmlEscape(opts.listName));
+    if (opts.assignee)   metaCells.push('<strong style="color:#64748b">Asignada a:</strong> ' + htmlEscape(opts.assignee));
+    if (opts.client)     metaCells.push('<strong style="color:#64748b">Cliente:</strong> ' + htmlEscape(opts.client));
+    if (opts.swVersion)  metaCells.push('<strong style="color:#64748b">Versión SW:</strong> ' + htmlEscape(opts.swVersion));
+    const metaHtml = metaCells.length
+        ? '<div style="font-size:13px;color:#475569;margin-top:10px;line-height:1.7">' + metaCells.join(' &nbsp;·&nbsp; ') + '</div>'
+        : '';
+
+    let badgesHtml = '';
+    const pb = priorityBadge(opts.priority);
+    const sb = statusBadge(opts.status);
+    if (pb || sb) badgesHtml = '<div style="margin-top:8px">' + [pb, sb].filter(Boolean).join('&nbsp;') + '</div>';
+
+    let changesHtml = '';
+    if (opts.changedFields && opts.changedFields.length) {
+        const visible = opts.changedFields.filter(f => f !== 'comentarios');
+        if (visible.length) {
+            const fieldLabel = { 'título': 'Título', 'descripción': 'Descripción', 'prioridad': 'Prioridad', 'estado': 'Estado', 'asignado a': 'Asignado', 'cliente': 'Cliente', 'versión': 'Versión SW', 'resuelto por': 'Resuelto' };
+            changesHtml = '<div style="margin-top:12px;padding:10px 14px;background:#fef9c3;border-left:3px solid #eab308;border-radius:4px;font-size:13px;color:#713f12">' +
+                '<strong>🔧 Campos modificados:</strong> ' +
+                visible.map(f => htmlEscape(fieldLabel[f] || f)).join(', ') +
+                '</div>';
+        }
+    }
+
+    let descHtml = '';
+    if (opts.description) {
+        const desc = String(opts.description).slice(0, 600);
+        descHtml = '<div style="margin-top:14px;padding:12px 14px;background:#f8fafc;border-left:3px solid #cbd5e1;border-radius:4px;font-size:13px;color:#334155;line-height:1.55;white-space:pre-wrap">' + htmlEscape(desc) + (opts.description.length > 600 ? '…' : '') + '</div>';
+    }
+
+    let commentsHtml = '';
+    if (opts.comments && opts.comments.length) {
+        commentsHtml = '<div style="margin-top:14px"><div style="font-size:12px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px">💬 ' + (opts.comments.length === 1 ? 'Comentario' : opts.comments.length + ' comentarios') + '</div>' +
+            opts.comments.map(cm =>
+                '<div style="background:#eef2ff;border-left:3px solid ' + BRAND_COLOR + ';padding:10px 14px;border-radius:4px;margin-bottom:6px;font-size:13px;line-height:1.5;color:#1e293b">' +
+                '<div style="font-weight:600;color:' + BRAND_DARK + ';margin-bottom:4px">' + htmlEscape(cm.author || 'Anónimo') + '</div>' +
+                '<div style="white-space:pre-wrap">' + htmlEscape(String(cm.text || '').slice(0, 600)) + '</div>' +
+                '</div>'
+            ).join('') +
+            '</div>';
+    }
+
+    return '<table cellpadding="0" cellspacing="0" border="0" style="width:100%;background:#ffffff;border:1px solid #e2e8f0;border-radius:8px;margin:0 0 16px 0">' +
+        '<tr><td style="padding:18px 22px">' +
+        '<div style="font-size:17px;font-weight:700;color:#0f172a;line-height:1.35">' + htmlEscape(opts.title || '(sin título)') + '</div>' +
+        badgesHtml +
+        metaHtml +
+        changesHtml +
+        descHtml +
+        commentsHtml +
+        (opts.bugId ? '<div style="margin-top:16px"><a href="' + taskUrl + '" style="display:inline-block;background:' + BRAND_COLOR + ';color:#ffffff;text-decoration:none;padding:9px 18px;border-radius:6px;font-size:13px;font-weight:600">Ver tarea →</a></div>' : '') +
+        '</td></tr></table>';
+}
+
+// Wrap one or more task cards in the branded shell
+function renderEmailShell(opts) {
+    // opts: { recipientName, headerEmoji, headerTitle, headerSubtitle, bodyHtml, unfollowLink, footerNote }
+    const greeting = opts.recipientName ? 'Hola ' + htmlEscape(opts.recipientName.split(' ')[0]) + ',' : 'Hola,';
+    const unfollowFooter = opts.unfollowLink
+        ? '<p style="margin:6px 0 0 0;font-size:11px;color:#94a3b8"><a href="' + opts.unfollowLink + '" style="color:#94a3b8;text-decoration:underline">Dejar de recibir notificaciones de esta tarea</a></p>'
+        : '';
+    return '<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>' +
+        '<body style="margin:0;padding:0;background:#f1f5f9;font-family:-apple-system,BlinkMacSystemFont,\'Segoe UI\',Arial,sans-serif">' +
+        '<table cellpadding="0" cellspacing="0" border="0" width="100%" style="background:#f1f5f9;padding:24px 12px">' +
+        '<tr><td align="center">' +
+        '<table cellpadding="0" cellspacing="0" border="0" style="max-width:640px;width:100%;background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 4px 12px rgba(15,23,42,0.06)">' +
+        // Header
+        '<tr><td style="background:linear-gradient(135deg,' + BRAND_COLOR + ' 0%,' + BRAND_DARK + ' 100%);padding:24px 28px;color:#ffffff">' +
+        '<div style="font-size:13px;font-weight:600;letter-spacing:1px;opacity:0.85;text-transform:uppercase">🐛 Bug Tracker</div>' +
+        '<div style="font-size:22px;font-weight:700;margin-top:8px;line-height:1.3">' + (opts.headerEmoji || '🔔') + ' ' + htmlEscape(opts.headerTitle) + '</div>' +
+        (opts.headerSubtitle ? '<div style="font-size:14px;margin-top:6px;opacity:0.92;line-height:1.4">' + opts.headerSubtitle + '</div>' : '') +
+        '</td></tr>' +
+        // Body
+        '<tr><td style="padding:26px 28px;background:#f8fafc">' +
+        '<p style="margin:0 0 16px 0;font-size:15px;color:#334155;line-height:1.55">' + greeting + '</p>' +
+        opts.bodyHtml +
+        '</td></tr>' +
+        // Footer
+        '<tr><td style="padding:18px 28px;background:#f1f5f9;border-top:1px solid #e2e8f0">' +
+        (opts.footerNote ? '<p style="margin:0 0 8px 0;font-size:12px;color:#64748b;line-height:1.5">' + opts.footerNote + '</p>' : '') +
+        '<p style="margin:0;font-size:12px;color:#94a3b8">Este mensaje fue enviado automáticamente por Bug Tracker.</p>' +
+        unfollowFooter +
+        '</td></tr>' +
+        '</table>' +
+        '</td></tr></table></body></html>';
+}
+
+// Build a plain-text fallback from a task card description
+function renderTaskText(opts) {
+    const priorityLabels = { low: 'Baja', medium: 'Media', high: 'Alta', critical: 'Crítica' };
+    const statusLabels = { 'open': 'Nuevo', 'in-progress': 'En curso', 'passed': 'Pasado', 'failed': 'Fallido', 'resolved': 'Resuelto' };
+    let t = '• ' + (opts.title || '(sin título)') + '\n';
+    if (opts.listName)  t += '  Lista: ' + opts.listName + '\n';
+    if (opts.assignee)  t += '  Asignada a: ' + opts.assignee + '\n';
+    if (opts.priority)  t += '  Prioridad: ' + (priorityLabels[opts.priority] || opts.priority) + '\n';
+    if (opts.status)    t += '  Estado: ' + (statusLabels[opts.status] || opts.status) + '\n';
+    if (opts.changedFields && opts.changedFields.length) {
+        const v = opts.changedFields.filter(f => f !== 'comentarios');
+        if (v.length) t += '  Cambios: ' + v.join(', ') + '\n';
+    }
+    if (opts.description) t += '  Descripción: ' + String(opts.description).slice(0, 300) + '\n';
+    if (opts.comments && opts.comments.length) {
+        t += '  Comentarios:\n';
+        opts.comments.forEach(cm => {
+            t += '    - ' + (cm.author || 'Anónimo') + ': ' + String(cm.text || '').slice(0, 200) + '\n';
+        });
+    }
+    return t;
+}
+
 async function sendEmail(to, subject, text, attachmentStr, html) {
     const transporter = nodemailer.createTransport({
         host: 'smtp.hostinger.com',
@@ -413,16 +571,33 @@ async function sendMentionNotifications(mentionedUsers, mentionerName, bugTitle,
     for (const user of mentionedUsers) {
         try {
             const unfollowToken = generateUnsubscribeToken(user.id, bugId || '');
-            const unfollowLink = 'https://bugtracker.tail51f3b0.ts.net/api/bugs/' + encodeURIComponent(bugId || '') + '/unsubscribe?userId=' + encodeURIComponent(user.id) + '&token=' + unfollowToken;
-            const text = '🔔 ' + mentionerName + ' te mencionó en: ' + bugTitle + '\n' +
-                '   📋 Lista: ' + listName + '\n' +
-                '   💬 "' + contextText.slice(0, 300) + '"\n\n' +
-                '🔗 Revisa en: https://bugtracker.tail51f3b0.ts.net';
-            const html = toHtml(text) + '<br><hr style="border:none;border-top:1px solid #ddd;margin:20px 0"><p style="font-size:12px;color:#999;font-family:Arial,sans-serif;"><a href="' + unfollowLink + '" style="color:#6366f1;">Dejar de recibir notificaciones sobre esta tarea</a></p>';
-            await sendEmail(user.email,
-                '[Bug Tracker] ' + mentionerName + ' te mencionó en "' + bugTitle + '"',
-                text, null, html
-            );
+            const unfollowLink = APP_URL + '/api/bugs/' + encodeURIComponent(bugId || '') + '/unsubscribe?userId=' + encodeURIComponent(user.id) + '&token=' + unfollowToken;
+
+            const subject = '[Bug Tracker] ' + mentionerName + ' te mencionó en "' + bugTitle + '"';
+            const headerSubtitle = '<strong>' + htmlEscape(mentionerName) + '</strong> te ha mencionado en un comentario.';
+            const bodyHtml =
+                renderTaskCard({
+                    title: bugTitle,
+                    listName,
+                    bugId,
+                    comments: [{ author: mentionerName, text: contextText }]
+                });
+
+            const html = renderEmailShell({
+                recipientName: user.name,
+                headerEmoji: '💬',
+                headerTitle: 'Te mencionaron en una tarea',
+                headerSubtitle,
+                bodyHtml,
+                unfollowLink,
+                footerNote: 'Recibes este correo porque alguien te mencionó con @' + htmlEscape(user.username) + ' en Bug Tracker.'
+            });
+
+            const text = mentionerName + ' te mencionó en la tarea "' + bugTitle + '" (Lista: ' + listName + ').\n\n' +
+                '"' + String(contextText).slice(0, 500) + '"\n\n' +
+                'Ver la tarea: ' + APP_URL;
+
+            await sendEmail(user.email, subject, text, null, html);
             console.log('[Mention] Sent to', user.email, '(' + user.name + ')');
         } catch (e) {
             console.error('[Mention] Failed for', user.email, ':', e.message);
@@ -763,152 +938,265 @@ const server = http.createServer(async (req, res) => {
                     changed.forEach(c => console.log('  -', c.type, c.entry.bug.title, '| fields:', (c.fields||[]).join(',')));
                     const users = readJSON(USERS_FILE) || [];
                     const authorName = session.username.charAt(0).toUpperCase() + session.username.slice(1);
-                    const priorityLabels = { low: 'Baja', medium: 'Media', high: 'Alta', critical: 'Crítica' };
-                    const statusLabels = { 'new': 'Nuevo', 'in-progress': 'En curso', 'passed': 'Pasado', 'failed': 'Fallido' };
 
-                    // Build change descriptions (3 formats: new, updated, comment-only)
-                    const changeDescriptions = changed.map(c => {
-                        const bug = c.entry.bug;
-                        const listName = c.entry.listName;
-                        const priority = priorityLabels[bug.priority] || bug.priority || '—';
-                        const assignee = bug.assignee || 'Sin asignar';
-                        const status = statusLabels[bug.status] || bug.status || '—';
-                        const desc = bug.description || '';
-                        const createdBy = bug.createdBy || '';
+                    // ===== Build recipient → relationships map =====
+                    // Each recipient gets a list of {change, reasons[]} so we can build
+                    // a personalized email explaining WHY they got it.
+                    // Reasons: 'assigned', 'newly_assigned', 'mentioned', 'follower',
+                    //          'creator', 'manager', 'admin', 'subscriber'
+                    const recipientChanges = new Map(); // email -> { user, items: [{ change, reasons:Set }] }
 
-                        // Extract new comments if any
-                        let newCommentText = '';
-                        const oldC = (c.oldBug && c.oldBug.comments) || [];
-                        const newC = bug.comments || [];
-                        if (newC.length > oldC.length) {
-                            const added = newC.slice(oldC.length);
-                            newCommentText = added.map(cm => '      \ud83d\udcac ' + (cm.author || 'An\ufffdnimo') + ': ' + (cm.text || '').slice(0, 120)).join('\\n');
+                    function addReason(user, change, reason) {
+                        if (!user || !user.email || !user.email.trim()) return;
+                        if (user.id === session.userId) return; // don't notify the author
+                        let rec = recipientChanges.get(user.email);
+                        if (!rec) {
+                            rec = { user, items: new Map() };
+                            recipientChanges.set(user.email, rec);
                         }
-
-                        // TYPE 1: New task - show ALL details including description and comments
-                        if (c.type === 'new_list') {
-                            return 'New list: ' + bug.title + ' - Created by ' + (bug.createdBy || '');
+                        let item = rec.items.get(change);
+                        if (!item) {
+                            item = { change, reasons: new Set() };
+                            rec.items.set(change, item);
                         }
-
-                        if (c.type === 'new') {
-                            let msg = '\ud83d\udd06 Nueva tarea: ' + bug.title + '\\n' +
-                                '   \ud83d\udccb Lista: ' + listName + '\\n';
-                            if (desc) msg += '   \ud83d\udcdd Descripci\ufffdn: ' + desc.slice(0, 200) + '\\n';
-                            msg += '   \ud83d\udd34 Prioridad: ' + priority + '\\n' +
-                                '   \ud83d\udc64 Asignada a: ' + assignee + '\\n' +
-                                '   \ud83d\udccc Estado: ' + status + '\\n' +
-                                '   \u270f\ufe0f Creada por: ' + createdBy;
-                            if (newC.length > 0) {
-                                msg += '\\n   \ud83d\udcac Comentarios iniciales (' + newC.length + '):\\n' +
-                                    newC.map(cm => '      ' + (cm.author || 'An\ufffdnimo') + ': ' + (cm.text || '').slice(0, 120)).join('\\n');
-                            }
-                            return msg;
-                        }
-
-                        // TYPE 2: Comment only change
-                        const nonCommentFields = (c.fields || []).filter(f => f !== 'comentarios');
-                        if (nonCommentFields.length === 0 && newCommentText) {
-                            return '\ud83d\udcac Nuevo(s) comentario(s) en: ' + bug.title + '\\n' +
-                                '   \ud83d\udccb Lista: ' + listName + '\\n' +
-                                newCommentText;
-                        }
-
-                        // TYPE 3: Other updates (fields changed, with or without comments)
-                        let msg = '\u270f\ufe0f Tarea actualizada: ' + bug.title + '\\n' +
-                            '   \ud83d\udccb Lista: ' + listName + '\\n' +
-                            '   \ud83d\udd27 Cambios: ' + c.fields.join(', ') + '\\n' +
-                            '   \ud83d\udc64 Asignada a: ' + assignee + '\\n' +
-                            '   \ud83d\udd34 Prioridad: ' + priority;
-                        if (newCommentText) {
-                            msg += '\\n' + newCommentText;
-                        }
-                        return msg;
-                    }).join('\\n\\n');
-
-                    const text = authorName + ' ha realizado ' + changed.length + ' cambio(s):\\n\\n' +
-                        changeDescriptions + '\\n\\n\ud83d\udd17 Revisa en: https://bugtracker.tail51f3b0.ts.net';
-                    const html = toHtml(text);
-
-                                        // Determine bugId for unsubscribe link (use first changed bug)
-                    let bugIdForEmail = null;
-                    for (const c of changed) {
-                        if (c.entry && c.entry.bug && c.entry.bug.id) {
-                            bugIdForEmail = c.entry.bug.id;
-                            break;
-                        }
+                        item.reasons.add(reason);
                     }
-                    if (!bugIdForEmail) bugIdForEmail = '';
 
-                    // Collect recipients: super user + subscribers + assignees + managers + followers
-                    const recipients = new Map(); // email -> user object
-
-                    // Super user ALWAYS gets notifications
                     const superUser = users.find(u => u.role === 'admin' && u.email && u.email.trim());
-                    if (superUser && superUser.id !== session.userId) {
-                        recipients.set(superUser.email, superUser);
+                    const managers = users.filter(u => u.role === 'manager' && u.email && u.email.trim());
+
+                    function findUserByDisplayName(name) {
+                        if (!name) return null;
+                        const target = String(name).trim().toLowerCase();
+                        return users.find(u => (u.name || '').trim().toLowerCase() === target && u.email && u.email.trim());
+                    }
+                    function findUserByUsername(uname) {
+                        if (!uname) return null;
+                        const t = String(uname).trim().toLowerCase();
+                        return users.find(u => (u.username || '').toLowerCase() === t && u.email && u.email.trim());
+                    }
+                    function parseAssignees(s) {
+                        return String(s || '').split(',').map(x => x.trim()).filter(Boolean);
                     }
 
-                    // Subscribers (users who opted in)
-                    users.forEach(u => {
-                        if (u.notifications !== false && u.email && u.email.trim() && u.id !== session.userId) {
-                            recipients.set(u.email, u);
-                        }
-                    });
+                    for (const c of changed) {
+                        const bug = c.entry.bug;
 
-                    // Direct assignees (notify on any change to their tasks)
-                    changed.forEach(c => {
-                        const assignee = c.entry.bug.assignee;
-                        if (assignee) {
-                            const user = users.find(u =>
-                                u.name === assignee && u.email && u.email.trim() && u.id !== session.userId
-                            );
-                            if (user) recipients.set(user.email, user);
-                        }
-                    });
+                        // --- ASSIGNEES of this task ---
+                        const newAssignees = parseAssignees(bug.assignee);
+                        const oldAssignees = c.oldBug ? parseAssignees(c.oldBug.assignee) : [];
+                        const newlyAdded = newAssignees.filter(a => !oldAssignees.includes(a));
+                        const stillAssigned = newAssignees.filter(a => oldAssignees.includes(a));
 
-                    // === NEW: Managers — reciben notificaciones de CUALQUIER cambio (como el admin) ===
-                    const managers = users.filter(u => u.role === 'manager' && u.email && u.email.trim() && u.id !== session.userId);
-                    managers.forEach(m => {
-                        // Skip if this manager has muted any of the changed bugs
-                        const isMuted = changed.some(c => {
-                            const b = c.type === 'new_list' ? null : c.entry?.bug;
-                            return b && b.mutedManagers && b.mutedManagers.includes(m.id);
+                        newlyAdded.forEach(name => {
+                            const u = findUserByDisplayName(name);
+                            if (u) addReason(u, c, 'newly_assigned');
                         });
-                        if (!isMuted) recipients.set(m.email, m);
-                    });
-
-                    // === NEW: Followers — reciben notificaciones de cualquier cambio en ESA tarea ===
-                    changed.forEach(c => {
-                        const bug = c.type === 'new_list' ? null : c.entry?.bug;
-                        if (bug && bug.followers && bug.followers.length > 0) {
-                            bug.followers.forEach(followerUsername => {
-                                const follower = users.find(u => u.username === followerUsername && u.email && u.email.trim() && u.id !== session.userId);
-                                if (follower) recipients.set(follower.email, follower);
+                        stillAssigned.forEach(name => {
+                            const u = findUserByDisplayName(name);
+                            if (u) addReason(u, c, 'assigned');
+                        });
+                        // For brand new tasks, every assignee is "newly assigned"
+                        if (c.type === 'new') {
+                            newAssignees.forEach(name => {
+                                const u = findUserByDisplayName(name);
+                                if (u) addReason(u, c, 'newly_assigned');
                             });
                         }
-                        // Also check oldBug followers (for updated tasks)
-                        if (c.oldBug && c.oldBug.followers && c.oldBug.followers.length > 0) {
-                            c.oldBug.followers.forEach(followerUsername => {
-                                const follower = users.find(u => u.username === followerUsername && u.email && u.email.trim() && u.id !== session.userId);
-                                if (follower) recipients.set(follower.email, follower);
-                            });
-                        }
-                    });
 
+                        // --- FOLLOWERS ---
+                        const followerSet = new Set([...(bug.followers || []), ...((c.oldBug && c.oldBug.followers) || [])]);
+                        followerSet.forEach(uname => {
+                            const u = findUserByUsername(uname);
+                            if (u) addReason(u, c, 'follower');
+                        });
+
+                        // --- CREATOR (notify them about updates to their tasks) ---
+                        if (c.type !== 'new' && bug.createdByUser) {
+                            const u = findUserByUsername(bug.createdByUser);
+                            if (u) addReason(u, c, 'creator');
+                        }
+
+                        // --- MANAGERS (unless muted on this bug) ---
+                        managers.forEach(m => {
+                            const muted = bug.mutedManagers && bug.mutedManagers.includes(m.id);
+                            if (!muted) addReason(m, c, 'manager');
+                        });
+
+                        // --- ADMIN/SUPER USER ---
+                        if (superUser) addReason(superUser, c, 'admin');
+
+                        // --- GLOBAL SUBSCRIBERS (opted in) ---
+                        users.forEach(u => {
+                            if (u.notifications !== false && u.email && u.email.trim()) {
+                                addReason(u, c, 'subscriber');
+                            }
+                        });
+                    }
+
+                    // ===== Render and send one personalized email per recipient =====
                     let sentCount = 0;
-                    for (const [email, user] of recipients) {
+                    for (const [email, rec] of recipientChanges) {
                         try {
-                            // Build personalized unsubscribe link for this recipient and this bug
-                            const unfollowToken = generateUnsubscribeToken(user.id, bugIdForEmail);
-                            const unfollowLink = 'https://bugtracker.tail51f3b0.ts.net/api/bugs/' + encodeURIComponent(bugIdForEmail) + '/unsubscribe?userId=' + encodeURIComponent(user.id) + '&token=' + unfollowToken;
-                            // Augment HTML with unsubscribe footer
-                            let emailHtml = html + '<br><hr style="border:none;border-top:1px solid #ddd;margin:20px 0"><p style="font-size:12px;color:#999;font-family:Arial,sans-serif;"><a href="' + unfollowLink + '" style="color:#6366f1;">Dejar de recibir notificaciones sobre esta tarea</a></p>';
-                            await sendEmail(email,
-                                '[Bug Tracker] ' + changed.length + ' cambio(s) de ' + authorName,
-                                text, null, emailHtml
-                            );
+                            const items = [...rec.items.values()];
+                            // Sort: assignments/mentions first, then by changedness
+                            const priorityOf = (it) => {
+                                if (it.reasons.has('newly_assigned')) return 0;
+                                if (it.reasons.has('assigned')) return 1;
+                                if (it.reasons.has('follower')) return 2;
+                                if (it.reasons.has('creator')) return 3;
+                                if (it.reasons.has('manager')) return 4;
+                                if (it.reasons.has('admin')) return 5;
+                                return 6;
+                            };
+                            items.sort((a, b) => priorityOf(a) - priorityOf(b));
+
+                            // Determine the dominant relationship to drive headline + subject
+                            const topItem = items[0];
+                            const topReasons = topItem.reasons;
+                            const topChange = topItem.change;
+                            const topBug = topChange.entry.bug;
+                            const isSingle = items.length === 1;
+
+                            let headerEmoji = '🔔';
+                            let headerTitle = 'Actualización en Bug Tracker';
+                            let headerSubtitle = '';
+                            let subject = '[Bug Tracker] Actualización de ' + authorName;
+                            let footerNote = '';
+
+                            if (topReasons.has('newly_assigned')) {
+                                headerEmoji = '🎯';
+                                headerTitle = 'Se te ha asignado una tarea';
+                                headerSubtitle = '<strong>' + htmlEscape(authorName) + '</strong> te asignó ' + (isSingle ? 'esta tarea' : items.length + ' tareas') + '.';
+                                subject = '[Bug Tracker] ' + authorName + ' te asignó "' + (topBug.title || 'una tarea') + '"';
+                                footerNote = 'Recibes este correo porque has sido asignado a esta tarea.';
+                            } else if (topReasons.has('assigned')) {
+                                headerEmoji = '✏️';
+                                headerTitle = 'Cambios en tu tarea';
+                                headerSubtitle = '<strong>' + htmlEscape(authorName) + '</strong> actualizó ' + (isSingle ? 'una tarea que tienes asignada' : items.length + ' tareas asignadas a ti') + '.';
+                                subject = '[Bug Tracker] ' + authorName + ' actualizó "' + (topBug.title || 'tu tarea') + '"';
+                                footerNote = 'Recibes este correo porque esta tarea está asignada a ti.';
+                            } else if (topReasons.has('follower')) {
+                                headerEmoji = '👀';
+                                headerTitle = 'Tarea que sigues actualizada';
+                                headerSubtitle = '<strong>' + htmlEscape(authorName) + '</strong> realizó cambios en ' + (isSingle ? 'una tarea que sigues' : items.length + ' tareas que sigues') + '.';
+                                subject = '[Bug Tracker] Actualización en "' + (topBug.title || 'una tarea') + '"';
+                                footerNote = 'Recibes este correo porque sigues esta tarea.';
+                            } else if (topReasons.has('creator')) {
+                                headerEmoji = '📝';
+                                headerTitle = 'Tu tarea fue actualizada';
+                                headerSubtitle = '<strong>' + htmlEscape(authorName) + '</strong> realizó cambios en ' + (isSingle ? 'una tarea que creaste' : items.length + ' tareas que creaste') + '.';
+                                subject = '[Bug Tracker] ' + authorName + ' actualizó tu tarea "' + (topBug.title || '') + '"';
+                                footerNote = 'Recibes este correo porque eres el creador de esta tarea.';
+                            } else if (topReasons.has('manager')) {
+                                headerEmoji = '📊';
+                                headerTitle = 'Actividad reciente en el equipo';
+                                headerSubtitle = '<strong>' + htmlEscape(authorName) + '</strong> realizó ' + items.length + ' cambio(s).';
+                                subject = '[Bug Tracker] ' + items.length + ' cambio(s) de ' + authorName;
+                                footerNote = 'Recibes este correo porque tu rol es Manager.';
+                            } else if (topReasons.has('admin')) {
+                                headerEmoji = '🛠️';
+                                headerTitle = 'Actividad reciente';
+                                headerSubtitle = '<strong>' + htmlEscape(authorName) + '</strong> realizó ' + items.length + ' cambio(s).';
+                                subject = '[Bug Tracker] ' + items.length + ' cambio(s) de ' + authorName;
+                                footerNote = 'Recibes este correo porque eres administrador.';
+                            } else {
+                                headerSubtitle = '<strong>' + htmlEscape(authorName) + '</strong> realizó ' + items.length + ' cambio(s).';
+                                subject = '[Bug Tracker] ' + items.length + ' cambio(s) de ' + authorName;
+                                footerNote = 'Recibes este correo porque estás suscrito a las notificaciones de Bug Tracker.';
+                            }
+
+                            // Build cards for each change
+                            const cardsHtml = items.map(it => {
+                                const c = it.change;
+                                const bug = c.entry.bug;
+                                if (c.type === 'new_list') {
+                                    // simple banner for new lists
+                                    return '<table cellpadding="0" cellspacing="0" border="0" style="width:100%;background:#ffffff;border:1px solid #e2e8f0;border-radius:8px;margin:0 0 16px 0"><tr><td style="padding:18px 22px">' +
+                                        '<div style="font-size:13px;font-weight:600;color:' + BRAND_COLOR + ';text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px">📋 Nueva lista</div>' +
+                                        '<div style="font-size:16px;font-weight:700;color:#0f172a">' + htmlEscape(bug.title) + '</div>' +
+                                        '<div style="font-size:13px;color:#64748b;margin-top:4px">Creada por ' + htmlEscape(bug.createdBy || authorName) + '</div>' +
+                                        '</td></tr></table>';
+                                }
+
+                                // Determine which comments are new (added in this change)
+                                const oldC = (c.oldBug && c.oldBug.comments) || [];
+                                const newC = bug.comments || [];
+                                const addedComments = (c.type === 'new')
+                                    ? newC
+                                    : (newC.length > oldC.length ? newC.slice(oldC.length) : []);
+
+                                // Per-recipient intro tag on the card
+                                let intro = '';
+                                if (c.type === 'new' && it.reasons.has('newly_assigned')) {
+                                    intro = '<div style="font-size:12px;font-weight:700;color:#16a34a;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px">🎯 Nueva tarea asignada a ti</div>';
+                                } else if (c.type === 'new') {
+                                    intro = '<div style="font-size:12px;font-weight:700;color:' + BRAND_COLOR + ';text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px">🆕 Tarea creada</div>';
+                                } else if (it.reasons.has('newly_assigned')) {
+                                    intro = '<div style="font-size:12px;font-weight:700;color:#16a34a;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px">🎯 Te han asignado esta tarea</div>';
+                                } else if (addedComments.length && (c.fields || []).filter(f => f !== 'comentarios').length === 0) {
+                                    intro = '<div style="font-size:12px;font-weight:700;color:' + BRAND_COLOR + ';text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px">💬 Nuevo comentario</div>';
+                                } else {
+                                    intro = '<div style="font-size:12px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px">✏️ Tarea actualizada</div>';
+                                }
+
+                                // Wrap the standard card with the intro
+                                const cardOpts = {
+                                    title: bug.title,
+                                    listName: c.entry.listName,
+                                    priority: bug.priority,
+                                    status: bug.status,
+                                    assignee: bug.assignee,
+                                    client: bug.client,
+                                    swVersion: bug.swVersion,
+                                    description: (c.type === 'new') ? bug.description : null,
+                                    comments: addedComments.map(cm => ({ author: cm.author, text: cm.text })),
+                                    bugId: bug.id,
+                                    changedFields: (c.type === 'new') ? null : c.fields
+                                };
+
+                                // Inject the intro just inside the card (before title)
+                                const card = renderTaskCard(cardOpts);
+                                return card.replace(
+                                    '<div style="font-size:17px;font-weight:700;color:#0f172a;',
+                                    intro + '<div style="font-size:17px;font-weight:700;color:#0f172a;'
+                                );
+                            }).join('');
+
+                            // Unsubscribe link points to first relevant bug
+                            const firstBugId = items.find(it => it.change.entry.bug.id)?.change.entry.bug.id || '';
+                            const unfollowToken = generateUnsubscribeToken(rec.user.id, firstBugId);
+                            const unfollowLink = APP_URL + '/api/bugs/' + encodeURIComponent(firstBugId) + '/unsubscribe?userId=' + encodeURIComponent(rec.user.id) + '&token=' + unfollowToken;
+
+                            const html = renderEmailShell({
+                                recipientName: rec.user.name,
+                                headerEmoji,
+                                headerTitle,
+                                headerSubtitle,
+                                bodyHtml: cardsHtml,
+                                unfollowLink,
+                                footerNote
+                            });
+
+                            // Plain-text fallback
+                            let text = headerTitle + '\n\n' + authorName + ' realizó ' + items.length + ' cambio(s):\n\n';
+                            text += items.map(it => renderTaskText({
+                                title: it.change.entry.bug.title,
+                                listName: it.change.entry.listName,
+                                priority: it.change.entry.bug.priority,
+                                status: it.change.entry.bug.status,
+                                assignee: it.change.entry.bug.assignee,
+                                description: it.change.type === 'new' ? it.change.entry.bug.description : null,
+                                comments: ((it.change.entry.bug.comments || []).slice(
+                                    it.change.type === 'new' ? 0 : ((it.change.oldBug && it.change.oldBug.comments) || []).length
+                                )).map(cm => ({ author: cm.author, text: cm.text })),
+                                changedFields: it.change.type === 'new' ? null : it.change.fields
+                            })).join('\n');
+                            text += '\nVer en: ' + APP_URL;
+
+                            await sendEmail(email, subject, text, null, html);
                             sentCount++;
-                            console.log('[Notify] Sent to', email, '(' + user.name + ')');
+                            console.log('[Notify] Sent to', email, '(' + rec.user.name + ') reasons:', [...new Set([...rec.items.values()].flatMap(i => [...i.reasons]))].join(','));
                         } catch (e) {
                             console.error('[Notify] Failed for', email, ':', e.message);
                         }
