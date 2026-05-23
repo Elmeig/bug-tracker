@@ -589,7 +589,11 @@ function renderBugList() {
         if (globalFilter.type === 'allTasks') {
             $('#current-list-title').textContent = 'Todas las tareas';
         } else {
-            $('#current-list-title').textContent = `${filterLabels[globalFilter.type] || globalFilter.type}: ${globalFilter.value || 'Todas'}`;
+            // Translate the value if it's a status (open / in-progress / passed / failed)
+            // so the heading reads "Estado: En curso" instead of "Estado: in-progress"
+            const rawVal = globalFilter.value;
+            const displayVal = (globalFilter.type === 'status' && statusLabels[rawVal]) ? statusLabels[rawVal] : (rawVal || 'Todas');
+            $('#current-list-title').textContent = `${filterLabels[globalFilter.type] || globalFilter.type}: ${displayVal}`;
         }
 
         // For assignee filter, match any of the comma-separated values
