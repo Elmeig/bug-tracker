@@ -1485,6 +1485,12 @@ function generateReport() {
             return (b.createdAt || 0) - (a.createdAt || 0);
         } else if (sortOrder === 'date-oldest') {
             return (a.createdAt || 0) - (b.createdAt || 0);
+        } else if (sortOrder === 'priority-high') {
+            const pd = (pOrder[a.priority] ?? 9) - (pOrder[b.priority] ?? 9); if (pd) return pd;
+            return (b.createdAt || 0) - (a.createdAt || 0);
+        } else if (sortOrder === 'priority-low') {
+            const pd = (pOrder[b.priority] ?? 9) - (pOrder[a.priority] ?? 9); if (pd) return pd;
+            return (b.createdAt || 0) - (a.createdAt || 0);
         } else if (sortOrder === 'title') {
             return (a.title || '').localeCompare(b.title || '', 'es');
         }
