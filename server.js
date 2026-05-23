@@ -267,8 +267,8 @@ const SCHEMAS = {
         // Audit / authorship
         createdBy: { type: 'string', maxLength: 100, default: '' },
         createdByUser: { type: 'string', maxLength: 100, default: '' },
-        createdAt: { type: 'string', maxLength: 50, default: '' },
-        updatedAt: { type: 'string', maxLength: 50, default: '' }
+        createdAt: { type: 'number', default: 0 },
+        updatedAt: { type: 'number', default: 0 }
     },
     list: {
         name: { type: 'string', maxLength: 100, required: true },

@@ -400,18 +400,29 @@ function $$(sel) { return document.querySelectorAll(sel); }
 function openModal(id) { document.getElementById(id).classList.add('show'); }
 function closeModal(id) { document.getElementById(id).classList.remove('show'); }
 
+function toDate(ts) {
+    if (ts === null || ts === undefined || ts === '') return null;
+    // Accept number, numeric string, or ISO string
+    const n = (typeof ts === 'number') ? ts : (/^\d+$/.test(String(ts).trim()) ? Number(ts) : ts);
+    const d = new Date(n);
+    return isNaN(d.getTime()) ? null : d;
+}
+
 function formatDate(ts) {
-    const d = new Date(ts);
+    const d = toDate(ts);
+    if (!d) return '—';
     return d.toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
 }
 
 function formatShortDate(ts) {
-    const d = new Date(ts);
+    const d = toDate(ts);
+    if (!d) return '—';
     return d.toLocaleDateString('es-ES', { day: '2-digit', month: 'short' });
 }
 
 function formatFullDate(ts) {
-    const d = new Date(ts);
+    const d = toDate(ts);
+    if (!d) return '—';
     return d.toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' });
 }
 
@@ -1211,10 +1222,119 @@ function openResolveModal(bugId, versionId, listId) {
     setTimeout(() => $('#resolve-who').focus(), 100);
 }
 
+function populateBugDatalists() {
+    const all = getAllBugs();
+    const clients = new Set();
+    const assignees = new Set();
+    all.forEach(b => {
+        if (b.client && b.client.trim()) clients.add(b.client.trim());
+        getAssignees(b).forEach(a => { if (a && a.trim()) assignees.add(a.trim()); });
+    });
+    const sortFn = (a, b) => a.localeCompare(b, 'es', { sensitivity: 'base' });
+    const cList = $('#bug-client-list');
+    if (cList) cList.innerHTML = [...clients].sort(sortFn).map(c => `<option value="${escapeHtml(c)}"></option>`).join('');
+    // Assignee uses custom per-segment autocomplete
+    bugAssigneeOptions = [...assignees].sort(sortFn);
+}
+
+let bugAssigneeOptions = [];
+let bugAssigneeActiveIdx = -1;
+
+function getAssigneeSegment(input) {
+    const val = input.value;
+    const pos = input.selectionStart ?? val.length;
+    const before = val.slice(0, pos);
+    const lastComma = before.lastIndexOf(',');
+    const segStart = lastComma === -1 ? 0 : lastComma + 1;
+    const after = val.slice(pos);
+    const nextComma = after.indexOf(',');
+    const segEnd = nextComma === -1 ? val.length : pos + nextComma;
+    return { start: segStart, end: segEnd, text: val.slice(segStart, segEnd).trim(), raw: val.slice(segStart, segEnd) };
+}
+
+function showAssigneeSuggestions() {
+    const input = $('#bug-assignee');
+    const box = $('#bug-assignee-suggest');
+    if (!input || !box) return;
+    const seg = getAssigneeSegment(input);
+    const q = seg.text.toLowerCase();
+    // Already-used names in other segments
+    const used = new Set(input.value.split(',').map(s => s.trim().toLowerCase()).filter(Boolean));
+    used.delete(q); // current segment not "used"
+    const matches = bugAssigneeOptions.filter(o => !used.has(o.toLowerCase()) && (q === '' || o.toLowerCase().includes(q))).slice(0, 8);
+    if (matches.length === 0) { box.style.display = 'none'; box.innerHTML = ''; return; }
+    bugAssigneeActiveIdx = -1;
+    box.innerHTML = matches.map((m, i) => `<div class="autocomplete-item" data-idx="${i}" data-val="${escapeHtml(m)}">${escapeHtml(m)}</div>`).join('');
+    box.style.display = 'block';
+}
+
+function pickAssigneeSuggestion(val) {
+    const input = $('#bug-assignee');
+    const seg = getAssigneeSegment(input);
+    const prefix = input.value.slice(0, seg.start);
+    const suffix = input.value.slice(seg.end);
+    // Add leading space after comma if needed
+    const leadSpace = (prefix.length > 0 && !prefix.endsWith(' ')) ? ' ' : '';
+    // Append ", " so user can type next name immediately
+    const trailing = suffix.trim() === '' ? ', ' : '';
+    const newVal = prefix + leadSpace + val + trailing + suffix;
+    input.value = newVal;
+    const caret = (prefix + leadSpace + val + trailing).length;
+    input.setSelectionRange(caret, caret);
+    input.focus();
+    $('#bug-assignee-suggest').style.display = 'none';
+}
+
+function setupAssigneeAutocomplete() {
+    const input = $('#bug-assignee');
+    const box = $('#bug-assignee-suggest');
+    if (!input || !box || input._acBound) return;
+    input._acBound = true;
+    input.addEventListener('input', showAssigneeSuggestions);
+    input.addEventListener('focus', showAssigneeSuggestions);
+    input.addEventListener('click', showAssigneeSuggestions);
+    input.addEventListener('keyup', (e) => {
+        if (['ArrowUp','ArrowDown','Enter','Escape'].includes(e.key)) return;
+        // Re-show on caret movement keys
+        if (['ArrowLeft','ArrowRight','Home','End'].includes(e.key)) showAssigneeSuggestions();
+    });
+    input.addEventListener('keydown', (e) => {
+        const items = box.querySelectorAll('.autocomplete-item');
+        if (box.style.display === 'none' || items.length === 0) return;
+        if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            bugAssigneeActiveIdx = (bugAssigneeActiveIdx + 1) % items.length;
+        } else if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            bugAssigneeActiveIdx = (bugAssigneeActiveIdx - 1 + items.length) % items.length;
+        } else if (e.key === 'Enter' && bugAssigneeActiveIdx >= 0) {
+            e.preventDefault();
+            pickAssigneeSuggestion(items[bugAssigneeActiveIdx].dataset.val);
+            return;
+        } else if (e.key === 'Escape') {
+            box.style.display = 'none';
+            return;
+        } else {
+            return;
+        }
+        items.forEach((it, i) => it.classList.toggle('active', i === bugAssigneeActiveIdx));
+        items[bugAssigneeActiveIdx].scrollIntoView({ block: 'nearest' });
+    });
+    box.addEventListener('mousedown', (e) => {
+        const it = e.target.closest('.autocomplete-item');
+        if (!it) return;
+        e.preventDefault();
+        pickAssigneeSuggestion(it.dataset.val);
+    });
+    input.addEventListener('blur', () => setTimeout(() => { box.style.display = 'none'; }, 150));
+}
+
 function openBugModalWithContext(bugId, versionId, listId) {
     editingBugId = bugId;
     editingVersionId = versionId;
     editingListId = listId;
+    populateBugDatalists();
+    setupAssigneeAutocomplete();
     if (bugId) {
         const bug = Store.getBug(versionId, listId, bugId);
         if (!bug) return;
