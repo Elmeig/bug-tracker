@@ -1486,10 +1486,17 @@ function generateReport() {
         } else if (sortOrder === 'date-oldest') {
             return (a.createdAt || 0) - (b.createdAt || 0);
         } else if (sortOrder === 'priority-high') {
-            const pd = (pOrder[a.priority] ?? 9) - (pOrder[b.priority] ?? 9); if (pd) return pd;
+            // Resolved tasks are treated as lower than 'low'
+            const ap = a.resolvedBy ? 4 : (pOrder[a.priority] ?? 9);
+            const bp = b.resolvedBy ? 4 : (pOrder[b.priority] ?? 9);
+            const pd = ap - bp; if (pd) return pd;
             return (b.createdAt || 0) - (a.createdAt || 0);
         } else if (sortOrder === 'priority-low') {
-            const pd = (pOrder[b.priority] ?? 9) - (pOrder[a.priority] ?? 9); if (pd) return pd;
+            // Resolved tasks rank below 'low' on the scale, so they appear FIRST
+            // when sorting low → high (ascending). pOrder for resolved = 4 (below low=3).
+            const ap = a.resolvedBy ? 4 : (pOrder[a.priority] ?? 9);
+            const bp = b.resolvedBy ? 4 : (pOrder[b.priority] ?? 9);
+            const pd = bp - ap; if (pd) return pd;
             return (b.createdAt || 0) - (a.createdAt || 0);
         } else if (sortOrder === 'title') {
             return (a.title || '').localeCompare(b.title || '', 'es');
