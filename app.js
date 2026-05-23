@@ -2411,7 +2411,54 @@ initEvents();
     // NOW show the correct auth UI with server data loaded
     updateAuthUI();
     render();
+
+    // Deep-link: if the URL has ?bug=ID (from an email "Ver tarea" button), open it
+    handleBugDeepLink();
 })();
+
+// Locate a bug by ID across all versions/lists and open its detail modal.
+// Used by email "Ver tarea" deep links: https://.../?bug=<id>
+function handleBugDeepLink() {
+    try {
+        const params = new URLSearchParams(window.location.search);
+        const bugId = params.get('bug');
+        if (!bugId) return;
+
+        // Wait until the user is logged in — otherwise the detail modal would
+        // appear behind the login screen.
+        const tryOpen = (attempts = 0) => {
+            if (!Auth.user) {
+                if (attempts < 30) return setTimeout(() => tryOpen(attempts + 1), 500);
+                return; // give up after ~15s
+            }
+            // Find bug across all versions/lists
+            let found = null;
+            for (const v of (Store.data.versions || [])) {
+                for (const l of (v.lists || [])) {
+                    const b = (l.bugs || []).find(x => x.id === bugId);
+                    if (b) { found = { versionId: v.id, listId: l.id }; break; }
+                }
+                if (found) break;
+            }
+            if (!found) {
+                console.warn('[DeepLink] Bug not found:', bugId);
+                // Strip the param so user isn't stuck reloading a dead link
+                history.replaceState({}, '', window.location.pathname + window.location.hash);
+                return;
+            }
+            // Switch active version/list so the task is visible in the background
+            Store.data.activeVersionId = found.versionId;
+            Store.data.activeListId = found.listId;
+            render();
+            openBugDetailWithContext(bugId, found.versionId, found.listId);
+            // Clean URL so a reload doesn't re-trigger
+            history.replaceState({}, '', window.location.pathname + window.location.hash);
+        };
+        tryOpen();
+    } catch (e) {
+        console.error('[DeepLink] Error:', e);
+    }
+}
 
 // Migration: rename 'UI Tests' to 'Softlens Test'
 (function migrateListNames() {
