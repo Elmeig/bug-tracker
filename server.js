@@ -776,7 +776,12 @@ const server = http.createServer(async (req, res) => {
     // GET /api/users
     if (pathname === '/api/users' && req.method === 'GET') {
         const users = readJSON(USERS_FILE) || [];
-        const safeUsers = users.map(u => ({ id: u.id, name: u.name, username: u.username, role: u.role, createdAt: u.createdAt, email: u.email || '', notifications: u.notifications !== false }));
+        // Hide admin accounts from non-admin sessions so they cannot be mentioned, followed, or assigned.
+        // Admins still see everyone (needed for the admin panel & role management).
+        const session = requireAuth(req);
+        const isAdmin = !!(session && session.role === 'admin');
+        const visible = isAdmin ? users : users.filter(u => u.role !== 'admin');
+        const safeUsers = visible.map(u => ({ id: u.id, name: u.name, username: u.username, role: u.role, createdAt: u.createdAt, email: u.email || '', notifications: u.notifications !== false }));
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify(safeUsers));
         return;

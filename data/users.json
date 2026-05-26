@@ -18,5 +18,15 @@
     "email": "mehdi@remvt.com",
     "notifications": true,
     "passwordHash": "daadfe80801e50e9a7179e20ad0f14afdea5e36fedef8449756cc76a616a4781:ef69afa5e2cedc4cce4697a3d388940a081edb8449d455fb56eedd416d2ba19ed7cf1e65fcf2fa8c907aa0d2ff73407402a33d31e28d30011b99a7bb53978503"
+  },
+  {
+    "id": "3f303e72-8b35-49b7-8400-dc85ca577aa5",
+    "name": "Felix Lopez",
+    "username": "felix",
+    "passwordHash": "de594634ed26b5848c791f6d18e27e5bbb85404531434a11a318e42223325bc1:e78a2459d8af6b80025a4504ab2b3c31d0ab39e0a6ae266e0d1e19288ed05e5f72bc25884a1900e081baa93c319ae0cd66c00847cbe7763521746e0058a228d6",
+    "role": "user",
+    "email": "",
+    "notifications": false,
+    "createdAt": 1779812037531
   }
 ]

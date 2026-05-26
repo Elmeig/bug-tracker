@@ -66,9 +66,9 @@
           "comments": [
             {
               "id": "dd0cffb5-f96e-433a-85e2-47663fd1d7f7",
-              "author": "Admin",
+              "author": "Sistema",
               "text": "Funciona bien en Mitsubishi pero con Triamec está fallando la transición entre la zona óptica y la periferia",
-              "createdAt": 1779805437401
+              "createdAt": "1779805437401"
             }
           ],
           "followers": []
@@ -107,9 +107,9 @@
           "updatedAt": 1779805341167,
           "id": "e3c15a62-759b-4c69-bdbb-2b7ca99bd672",
           "resolvedBy": "Fran",
-          "resolvedAt": 1779805341167,
+          "resolvedAt": "1779805341167",
           "resolvedVersion": "15.2.10.0",
-          "resolvedByUser": "Admin",
+          "resolvedByUser": "Sistema",
           "comments": [],
           "followers": []
         },
@@ -205,7 +205,7 @@
               "id": "fade0d72-9184-456f-bd51-16eb9d7ab9f2",
               "author": "Mehdi",
               "text": "Hay una versión que corrige el fallo. 15.3.2.0. Tenemos que conseguir poder instalar una versión Netcore",
-              "createdAt": 1778956370107,
+              "createdAt": "1778956370107",
               "editedAt": "1779349350535"
             }
           ],
@@ -274,7 +274,7 @@
               "id": "c3549d3d-88d4-40eb-ae8e-13fde03d2ba8",
               "author": "Mehdi",
               "text": "Falta confirmar si es posible o no",
-              "createdAt": 1778955608178
+              "createdAt": "1778955608178"
             }
           ],
           "followers": [
@@ -362,7 +362,7 @@
               "id": "705f2551-7094-405a-8038-6ee8b6b05e95",
               "author": "Mehdi",
               "text": "Hay que verlo primero",
-              "createdAt": 1779383074310
+              "createdAt": "1779383074310"
             }
           ],
           "followers": []
@@ -387,7 +387,7 @@
               "id": "3c70d6ab-2d0c-42e6-9029-aa5768ffe53f",
               "author": "Mehdi",
               "text": "Se prevé que vayan Marcelo y Mehdi la semana del 1 de mayo",
-              "createdAt": 1778954145493,
+              "createdAt": "1778954145493",
               "editedAt": "1779034867034"
             }
           ],
@@ -465,7 +465,7 @@
               "id": "e842dce2-9283-48a0-a72a-535472bf66e7",
               "author": "Mehdi",
               "text": "El Jueves 21 de mayo hemos quedado con el cliente en darle soporte para poner en marcha la R400 torica con Triamec",
-              "createdAt": 1779307768250
+              "createdAt": "1779307768250"
             }
           ],
           "followers": []
