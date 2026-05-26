@@ -1289,12 +1289,18 @@ function attachAutocomplete(opts) {
             : new Set();
         if (multi) used.delete(q);
         const matches = getOptions()
-            .filter(o => !used.has(o.toLowerCase()) && (q === '' || o.toLowerCase().includes(q)))
-            .slice(0, 8);
+            .filter(o => !used.has(o.toLowerCase()) && (q === '' || o.toLowerCase().includes(q)));
         if (matches.length === 0) { box.style.display = 'none'; box.innerHTML = ''; activeIdx = -1; return; }
         activeIdx = -1;
+        // Highlight matching substring (like Asistencia's combobox)
+        const escapeRe = s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const re = q ? new RegExp(`(${escapeRe(q)})`, 'gi') : null;
         box.innerHTML = matches
-            .map((m, i) => `<div class="autocomplete-item" data-idx="${i}" data-val="${escapeHtml(m)}">${escapeHtml(m)}</div>`)
+            .map((m, i) => {
+                const safe = escapeHtml(m);
+                const html = re ? safe.replace(re, '<mark>$1</mark>') : safe;
+                return `<div class="autocomplete-item" data-idx="${i}" data-val="${safe}">${html}</div>`;
+            })
             .join('');
         box.style.display = 'block';
     }

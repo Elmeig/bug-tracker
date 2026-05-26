@@ -1009,7 +1009,7 @@ body {
     border: 1px solid var(--accent);
     border-top: none;
     border-radius: 0 0 6px 6px;
-    max-height: 180px;
+    max-height: 320px;
     overflow-y: auto;
     box-shadow: 0 4px 12px rgba(0,0,0,0.35);
 }
@@ -1023,4 +1023,15 @@ body {
 .autocomplete-item.active {
     background: var(--accent);
     color: #fff;
+}
+.autocomplete-item mark {
+    background: transparent;
+    color: var(--accent);
+    font-weight: 700;
+    padding: 0;
+}
+.autocomplete-item:hover mark,
+.autocomplete-item.active mark {
+    color: #fff;
+    text-decoration: underline;
 }
