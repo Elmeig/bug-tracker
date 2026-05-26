@@ -129,7 +129,21 @@ const Auth = {
         else localStorage.removeItem('bugtracker_token');
     },
 
-    get hasSuperUser() { return this._users.some(u => u.role === 'admin'); },
+    // Server-truthed admin existence (server tells us via /api/setup-status).
+    // Falls back to the local heuristic if the fetch hasn't happened yet.
+    _serverHasAdmin: null,
+    get hasSuperUser() {
+        if (this._serverHasAdmin !== null) return this._serverHasAdmin;
+        return this._users.some(u => u.role === 'admin');
+    },
+    async loadSetupStatus() {
+        try {
+            const res = await fetch('/api/setup-status');
+            if (!res.ok) return;
+            const data = await res.json();
+            this._serverHasAdmin = !!data.hasAdmin;
+        } catch {}
+    },
 
     async register(name, username, password, role = 'user') {
         if (!Sync.isOnline) {
@@ -2428,6 +2442,7 @@ initEvents();
     await Sync.init();
     if (Sync.isOnline) {
         await Auth.loadFromServer();
+        await Auth.loadSetupStatus();
         await Store.loadFromServer();
         Store.ensureDefaultVersion();
         loadAsistenciaCustomers(); // fire-and-forget: prime customer autocomplete from Asistencia

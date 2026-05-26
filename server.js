@@ -773,6 +773,17 @@ const server = http.createServer(async (req, res) => {
         return;
     }
 
+    // GET /api/setup-status — unauthenticated, returns whether the system has an admin yet.
+    // Used by the auth screen to decide between "first-run superuser setup" and "login".
+    // Replaces the old client-side heuristic (users.some(role==='admin')) which broke once
+    // /api/users started hiding admins from non-admin sessions.
+    if (pathname === '/api/setup-status' && req.method === 'GET') {
+        const users = readJSON(USERS_FILE) || [];
+        res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
+        res.end(JSON.stringify({ hasAdmin: users.some(u => u.role === 'admin'), userCount: users.length }));
+        return;
+    }
+
     // GET /api/users
     if (pathname === '/api/users' && req.method === 'GET') {
         const users = readJSON(USERS_FILE) || [];
