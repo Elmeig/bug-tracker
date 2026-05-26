@@ -666,13 +666,18 @@ const server = http.createServer(async (req, res) => {
                 res.end(JSON.stringify({ error: 'El usuario ya existe' }));
                 return;
             }
+            // Enforce single-superuser invariant: only the very first registration may be admin.
+            // Once an admin exists, every subsequent registration is forced to 'user' regardless
+            // of what the client requests.
+            const hasAdmin = users.some(u => u.role === 'admin');
+            const effectiveRole = (!hasAdmin && role === 'admin') ? 'admin' : 'user';
             const passwordHash = await hashPassword(password);
             const newUser = {
                 id: crypto.randomUUID(),
                 name: name.trim(),
                 username: normalizedUsername,
                 passwordHash,
-                role,
+                role: effectiveRole,
                 email: '',
                 notifications: false,
                 createdAt: Date.now()
@@ -798,12 +803,20 @@ const server = http.createServer(async (req, res) => {
         return;
     }
 
-    // POST /api/users
+    // POST /api/users — bulk save users (admin only).
+    // Enforces single-superuser invariant: the only account that may have role='admin'
+    // in the saved file is the currently-authenticated admin themselves (preserves their
+    // existing role from disk). All other incoming role='admin' values are demoted to 'user'.
     if (pathname === '/api/users' && req.method === 'POST') {
         const session = requireAuth(req);
         if (!session) {
             res.writeHead(401, { 'Content-Type': 'application/json' });
             res.end(JSON.stringify({ error: 'No autorizado' }));
+            return;
+        }
+        if (session.role !== 'admin') {
+            res.writeHead(403, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ error: 'Solo el admin puede modificar usuarios' }));
             return;
         }
         try {
@@ -813,6 +826,15 @@ const server = http.createServer(async (req, res) => {
                 const existing = existingUsers.find(u => u.id === incoming.id);
                 if (existing && existing.passwordHash) incoming.passwordHash = existing.passwordHash;
                 if (existing && existing.notifications !== undefined) incoming.notifications = existing.notifications;
+                // Single-superuser invariant: role='admin' is only allowed if the existing
+                // record on disk already had role='admin' (i.e. the established superuser).
+                // Any attempt to promote someone else, or to demote the existing admin, is
+                // ignored — the role is forced to match disk for admins.
+                if (existing && existing.role === 'admin') {
+                    incoming.role = 'admin';
+                } else if (incoming.role === 'admin') {
+                    incoming.role = 'user';
+                }
                 return incoming;
             });
             writeJSON(USERS_FILE, mergedUsers);
