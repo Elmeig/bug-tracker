@@ -12,16 +12,16 @@
           "status": "open",
           "tags": [],
           "locked": false,
-          "createdBy": "Mehdi",
-          "createdAt": "1778844006773",
-          "id": "a1889033-276a-415f-bc5e-d8da2d4aa53f",
-          "comments": [],
-          "followers": [],
           "assignee": "Mehdi",
           "client": "REM",
           "swVersion": "15.3.2.0",
+          "createdBy": "Mehdi",
           "createdByUser": "mehdi",
-          "updatedAt": 1778956400519
+          "createdAt": 1778844006773,
+          "updatedAt": 1778956400519,
+          "id": "a1889033-276a-415f-bc5e-d8da2d4aa53f",
+          "comments": [],
+          "followers": []
         }
       ]
     },
@@ -37,16 +37,16 @@
           "status": "in-progress",
           "tags": [],
           "locked": false,
-          "createdBy": "Mehdi",
-          "createdAt": "1778848625807",
-          "id": "df04caba-1c72-49aa-b3b6-f8b6c468a67b",
-          "comments": [],
-          "followers": [],
           "assignee": "Álvaro",
           "client": "Ver Mexico",
           "swVersion": "11.0.2.15",
+          "createdBy": "Mehdi",
           "createdByUser": "mehdi",
-          "updatedAt": 1778919014121
+          "createdAt": 1778848625807,
+          "updatedAt": 1778919014121,
+          "id": "df04caba-1c72-49aa-b3b6-f8b6c468a67b",
+          "comments": [],
+          "followers": []
         },
         {
           "title": "Zona optica torica front espejada",
@@ -55,20 +55,20 @@
           "status": "open",
           "tags": [],
           "locked": false,
+          "assignee": "Álvaro",
+          "client": "Tiedra",
+          "swVersion": "15.2.10.0",
           "createdBy": "Mehdi",
-          "createdAt": "1778848965655",
+          "createdByUser": "mehdi",
+          "createdAt": 1778848965655,
+          "updatedAt": 1778918950211,
           "id": "930fb5fd-9ec7-4d77-a63a-ecefa3eb59e6",
           "resolvedBy": "Álvaro",
           "resolvedAt": "1778857898010",
           "resolvedVersion": "15.3.2.0",
           "resolvedByUser": "El Mehdi Ighirri",
           "comments": [],
-          "followers": [],
-          "assignee": "Álvaro",
-          "client": "Tiedra",
-          "swVersion": "15.2.10.0",
-          "createdByUser": "mehdi",
-          "updatedAt": 1778918950211
+          "followers": []
         },
         {
           "title": "Mini files no se abre",
@@ -77,16 +77,16 @@
           "status": "open",
           "tags": [],
           "locked": false,
-          "createdBy": "Mehdi",
-          "createdAt": "1778850968433",
-          "id": "a6414051-9d49-4f0a-affd-ec2b7d47f42d",
-          "comments": [],
-          "followers": [],
           "assignee": "Mehdi",
           "client": "Tiedra",
           "swVersion": "15.2.10.0",
+          "createdBy": "Mehdi",
           "createdByUser": "mehdi",
-          "updatedAt": 1778919088606
+          "createdAt": 1778850968433,
+          "updatedAt": 1778919088606,
+          "id": "a6414051-9d49-4f0a-affd-ec2b7d47f42d",
+          "comments": [],
+          "followers": []
         },
         {
           "title": "Fallo al cargar un front desde producción en loader",
@@ -95,16 +95,16 @@
           "status": "in-progress",
           "tags": [],
           "locked": false,
-          "createdBy": "Mehdi",
-          "createdAt": "1778852360511",
-          "id": "e3c15a62-759b-4c69-bdbb-2b7ca99bd672",
-          "comments": [],
-          "followers": [],
           "assignee": "Fran",
           "client": "Tiedra",
           "swVersion": "15.2.10.0",
+          "createdBy": "Mehdi",
           "createdByUser": "mehdi",
-          "updatedAt": 1778919078082
+          "createdAt": 1778852360511,
+          "updatedAt": 1778919078082,
+          "id": "e3c15a62-759b-4c69-bdbb-2b7ca99bd672",
+          "comments": [],
+          "followers": []
         },
         {
           "title": "Referencias de las herramientas borradas",
@@ -113,20 +113,20 @@
           "status": "open",
           "tags": [],
           "locked": false,
+          "assignee": "Fran",
+          "client": "Tiedra",
+          "swVersion": "15.2.10.0",
           "createdBy": "Mehdi",
-          "createdAt": "1778852617291",
+          "createdByUser": "mehdi",
+          "createdAt": 1778852617291,
+          "updatedAt": 1778918936219,
           "id": "a8f070c5-2aed-4300-a5e0-0bc82f242621",
           "resolvedBy": "Fran",
           "resolvedAt": "1778857748814",
           "resolvedVersion": "15.2.13.0",
           "resolvedByUser": "El Mehdi Ighirri",
           "comments": [],
-          "followers": [],
-          "assignee": "Fran",
-          "client": "Tiedra",
-          "swVersion": "15.2.10.0",
-          "createdByUser": "mehdi",
-          "updatedAt": 1778918936219
+          "followers": []
         },
         {
           "title": "Primera orden del loader",
@@ -135,16 +135,16 @@
           "status": "in-progress",
           "tags": [],
           "locked": false,
-          "createdBy": "Mehdi",
-          "createdAt": "1778853908510",
-          "id": "23b210a0-1277-4632-b223-1a6708419010",
-          "comments": [],
-          "followers": [],
           "assignee": "Fran",
           "client": "Tiedra",
           "swVersion": "15.2.10.0",
+          "createdBy": "Mehdi",
           "createdByUser": "mehdi",
-          "updatedAt": 1778919001053
+          "createdAt": 1778853908510,
+          "updatedAt": 1778919001053,
+          "id": "23b210a0-1277-4632-b223-1a6708419010",
+          "comments": [],
+          "followers": []
         },
         {
           "title": "Errata en mostrar el diámetro duplicando auto",
@@ -153,16 +153,16 @@
           "status": "open",
           "tags": [],
           "locked": false,
-          "createdBy": "Mehdi",
-          "createdAt": "1778854699050",
-          "id": "c6e7f387-e3cb-4e5e-8d07-d0f558e79180",
-          "comments": [],
-          "followers": [],
           "assignee": "",
           "client": "Tiedra",
           "swVersion": "15.2.10.0",
+          "createdBy": "Mehdi",
           "createdByUser": "mehdi",
-          "updatedAt": 1778919149870
+          "createdAt": 1778854699050,
+          "updatedAt": 1778919149870,
+          "id": "c6e7f387-e3cb-4e5e-8d07-d0f558e79180",
+          "comments": [],
+          "followers": []
         },
         {
           "title": "Incongruencia en las indicaciones de Work Orders",
@@ -171,16 +171,16 @@
           "status": "open",
           "tags": [],
           "locked": false,
-          "createdBy": "Mehdi",
-          "createdAt": "1778854995338",
-          "id": "b4bd734c-0027-4979-a41a-e113d5d7dec2",
-          "comments": [],
-          "followers": [],
           "assignee": "Fran, Jesús",
           "client": "Tiedra",
           "swVersion": "15.2.10.0",
+          "createdBy": "Mehdi",
           "createdByUser": "mehdi",
-          "updatedAt": 1778918987233
+          "createdAt": 1778854995338,
+          "updatedAt": 1778918987233,
+          "id": "b4bd734c-0027-4979-a41a-e113d5d7dec2",
+          "comments": [],
+          "followers": []
         },
         {
           "title": "Front espejado si ASG izquierdas",
@@ -189,8 +189,13 @@
           "status": "in-progress",
           "tags": [],
           "locked": false,
+          "assignee": "Álvaro",
+          "client": "Oculenti",
+          "swVersion": "14.5.38.0",
           "createdBy": "Mehdi",
-          "createdAt": "1778951724014",
+          "createdByUser": "mehdi",
+          "createdAt": 1778951724014,
+          "updatedAt": 1779306651670,
           "id": "750ce6c5-c717-4c70-8991-f10d099bf6aa",
           "comments": [
             {
@@ -201,12 +206,25 @@
               "editedAt": "1779349350535"
             }
           ],
-          "followers": [],
-          "assignee": "Álvaro",
-          "client": "Oculenti",
+          "followers": []
+        },
+        {
+          "title": "Valor altura Milling en negativo",
+          "description": "El campo para introducir el desfase de altura del milling no permite introducir el signo (-), hay que hacer copia y pega para poder meter un dato negativo",
+          "priority": "medium",
+          "status": "open",
+          "tags": [],
+          "locked": false,
+          "assignee": "",
+          "client": "3S Medical",
           "swVersion": "14.5.38.0",
+          "createdBy": "Mehdi",
           "createdByUser": "mehdi",
-          "updatedAt": 1779306651670
+          "createdAt": 1779541718468,
+          "updatedAt": 1779541718468,
+          "id": "6a9bd98c-4605-4607-a4d1-5829271374b0",
+          "comments": [],
+          "followers": []
         }
       ]
     },
@@ -222,16 +240,16 @@
           "status": "open",
           "tags": [],
           "locked": false,
-          "createdBy": "Mehdi",
-          "createdAt": "1778851419039",
-          "id": "e95361ea-139e-413f-a3a2-fccf972534ec",
-          "comments": [],
-          "followers": [],
           "assignee": "",
           "client": "Tiedra",
           "swVersion": "15.2.10.0",
+          "createdBy": "Mehdi",
           "createdByUser": "mehdi",
-          "updatedAt": 1778956513179
+          "createdAt": 1778851419039,
+          "updatedAt": 1778956513179,
+          "id": "e95361ea-139e-413f-a3a2-fccf972534ec",
+          "comments": [],
+          "followers": []
         },
         {
           "title": "Cargar-unir bases de datos",
@@ -240,8 +258,13 @@
           "status": "open",
           "tags": [],
           "locked": false,
+          "assignee": "",
+          "client": "Tiedra",
+          "swVersion": "15.2.10.0",
           "createdBy": "Mehdi",
-          "createdAt": "1778851634262",
+          "createdByUser": "mehdi",
+          "createdAt": 1778851634262,
+          "updatedAt": 1778955608178,
           "id": "e9418b65-ce40-4194-87bb-532af2da43da",
           "comments": [
             {
@@ -253,12 +276,7 @@
           ],
           "followers": [
             "manager"
-          ],
-          "assignee": "",
-          "client": "Tiedra",
-          "swVersion": "15.2.10.0",
-          "createdByUser": "mehdi",
-          "updatedAt": 1778955608178
+          ]
         }
       ]
     },
@@ -274,16 +292,16 @@
           "status": "open",
           "tags": [],
           "locked": false,
-          "createdBy": "Mehdi",
-          "createdAt": "1778851790210",
-          "id": "7611c563-9831-4af2-90b5-2561e49f58d6",
-          "comments": [],
-          "followers": [],
           "assignee": "",
           "client": "Tiedra",
           "swVersion": "",
+          "createdBy": "Mehdi",
           "createdByUser": "mehdi",
-          "updatedAt": 1778919053426
+          "createdAt": 1778851790210,
+          "updatedAt": 1778919053426,
+          "id": "7611c563-9831-4af2-90b5-2561e49f58d6",
+          "comments": [],
+          "followers": []
         },
         {
           "title": "Diferencia entre Autothikness y lo medido",
@@ -292,16 +310,16 @@
           "status": "open",
           "tags": [],
           "locked": false,
-          "createdBy": "Mehdi",
-          "createdAt": "1778852161647",
-          "id": "c1290e45-77be-49df-8cdc-b1c81e64e379",
-          "comments": [],
-          "followers": [],
           "assignee": "",
           "client": "Tiedra",
           "swVersion": "",
+          "createdBy": "Mehdi",
           "createdByUser": "mehdi",
-          "updatedAt": 1778919065962
+          "createdAt": 1778852161647,
+          "updatedAt": 1778919065962,
+          "id": "c1290e45-77be-49df-8cdc-b1c81e64e379",
+          "comments": [],
+          "followers": []
         },
         {
           "title": "Gomas entre el torno y el robot",
@@ -310,16 +328,16 @@
           "status": "open",
           "tags": [],
           "locked": false,
-          "createdBy": "Mehdi",
-          "createdAt": "1778852871091",
-          "id": "d25bfa04-9c54-4eb1-82f9-3b00b4f7996c",
-          "comments": [],
-          "followers": [],
           "assignee": "",
           "client": "Tiedra",
           "swVersion": "",
+          "createdBy": "Mehdi",
           "createdByUser": "mehdi",
-          "updatedAt": 1778919160811
+          "createdAt": 1778852871091,
+          "updatedAt": 1778919160811,
+          "id": "d25bfa04-9c54-4eb1-82f9-3b00b4f7996c",
+          "comments": [],
+          "followers": []
         },
         {
           "title": "Soplador de linear 2 no va",
@@ -328,8 +346,13 @@
           "status": "open",
           "tags": [],
           "locked": false,
+          "assignee": "Mehdi",
+          "client": "Tiedra",
+          "swVersion": "15.2.10.0",
           "createdBy": "Mehdi",
-          "createdAt": "1778855111939",
+          "createdByUser": "mehdi",
+          "createdAt": 1778855111939,
+          "updatedAt": 1779383074310,
           "id": "21dcf5a5-de4b-4f72-a0ff-9d60dc4856a2",
           "comments": [
             {
@@ -339,12 +362,7 @@
               "createdAt": "1779383074310"
             }
           ],
-          "followers": [],
-          "assignee": "Mehdi",
-          "client": "Tiedra",
-          "swVersion": "15.2.10.0",
-          "createdByUser": "mehdi",
-          "updatedAt": 1779383074310
+          "followers": []
         },
         {
           "title": "Actualizar ASG Gperm a Triamec",
@@ -353,8 +371,13 @@
           "status": "open",
           "tags": [],
           "locked": false,
+          "assignee": "Marcelo, Mehdi",
+          "client": "Gperm",
+          "swVersion": "",
           "createdBy": "Mehdi",
-          "createdAt": "1778953372183",
+          "createdByUser": "mehdi",
+          "createdAt": 1778953372183,
+          "updatedAt": 1779383004261,
           "id": "55d16b2f-2be2-4b92-b4ae-2892454fcb38",
           "comments": [
             {
@@ -367,12 +390,25 @@
           ],
           "followers": [
             "mehdi"
-          ],
-          "assignee": "Marcelo, Mehdi",
-          "client": "Gperm",
+          ]
+        },
+        {
+          "title": "Chuck IOL Bruno Sena",
+          "description": "Preparar 50 unidades para Side 1 y 10 unidades para Side 2 según planos enviados por el cliente",
+          "priority": "critical",
+          "status": "in-progress",
+          "tags": [],
+          "locked": false,
+          "assignee": "Mehdi,",
+          "client": "Bruno Sena",
           "swVersion": "",
+          "createdBy": "Mehdi",
           "createdByUser": "mehdi",
-          "updatedAt": 1779383004261
+          "createdAt": 1779785401178,
+          "updatedAt": 1779785401178,
+          "id": "79b59b28-0968-44dd-be24-12a90abaf211",
+          "comments": [],
+          "followers": []
         }
       ]
     },
@@ -380,7 +416,26 @@
       "name": "Actualizaciónes a clientes",
       "color": "#ec4899",
       "id": "c43055f1-e186-4e9c-818c-6af27e9fc222",
-      "bugs": []
+      "bugs": [
+        {
+          "title": "R300 3S Medical poner la versión que tiene la R400",
+          "description": "Hay varias mejoras de software y diferencias en los menús, el salto es grande.\nHay que instalar Mx Component y seguir el procedimiento del salto a la versión 11.x.x.x e instalar la versión 14.5.38.0",
+          "priority": "high",
+          "status": "open",
+          "tags": [],
+          "locked": false,
+          "assignee": "Mehdi,",
+          "client": "3S Medical",
+          "swVersion": "8.1.4.5",
+          "createdBy": "Mehdi",
+          "createdByUser": "mehdi",
+          "createdAt": 1779542703908,
+          "updatedAt": 1779571968591,
+          "id": "9e823fc9-d313-41ad-a6d0-afe6c55d6283",
+          "comments": [],
+          "followers": []
+        }
+      ]
     },
     {
       "name": "Puestas en marcha",
@@ -394,8 +449,13 @@
           "status": "in-progress",
           "tags": [],
           "locked": false,
+          "assignee": "Ricardo",
+          "client": "Dr Lens",
+          "swVersion": "",
           "createdBy": "Mehdi",
-          "createdAt": "1779306794469",
+          "createdByUser": "mehdi",
+          "createdAt": 1779306794469,
+          "updatedAt": 1779350308770,
           "id": "208b130c-b3d2-42ca-933e-24307aac1760",
           "comments": [
             {
@@ -405,12 +465,7 @@
               "createdAt": "1779307768250"
             }
           ],
-          "followers": [],
-          "assignee": "Ricardo",
-          "client": "Dr Lens",
-          "swVersion": "",
-          "createdByUser": "mehdi",
-          "updatedAt": 1779350308770
+          "followers": []
         }
       ]
     }

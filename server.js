@@ -731,6 +731,35 @@ const server = http.createServer(async (req, res) => {
         return;
     }
 
+    // GET /api/customers — read Asistencia customer list (cross-app integration)
+    // Returns sorted unique cliente names from /home/wilson/asistencia-tecnica/data/records.json.
+    // Read-only, requires session auth. If Asistencia data is unreachable, returns [] (graceful degrade).
+    if (pathname === '/api/customers' && req.method === 'GET') {
+        const session = requireAuth(req);
+        if (!session) {
+            res.writeHead(401, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ error: 'No autorizado' }));
+            return;
+        }
+        const ASISTENCIA_RECORDS = '/home/wilson/asistencia-tecnica/data/records.json';
+        let customers = [];
+        try {
+            const raw = fs.readFileSync(ASISTENCIA_RECORDS, 'utf8');
+            const records = JSON.parse(raw);
+            const set = new Set();
+            for (const r of records) {
+                const c = (r && r.cliente ? String(r.cliente).trim() : '');
+                if (c) set.add(c);
+            }
+            customers = [...set].sort((a, b) => a.localeCompare(b, 'es', { sensitivity: 'base' }));
+        } catch (err) {
+            console.warn('[/api/customers] Asistencia data unavailable:', err.message);
+        }
+        res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'public, max-age=60' });
+        res.end(JSON.stringify({ customers, source: 'asistencia', count: customers.length }));
+        return;
+    }
+
     // GET /api/me
     if (pathname === '/api/me' && req.method === 'GET') {
         const session = requireAuth(req);

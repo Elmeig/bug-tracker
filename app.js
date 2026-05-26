@@ -1234,12 +1234,30 @@ function populateBugDatalists() {
         if (b.client && b.client.trim()) clients.add(b.client.trim());
         getAssignees(b).forEach(a => { if (a && a.trim()) assignees.add(a.trim()); });
     });
+    // Merge in Asistencia customers (fetched once, cached in asistenciaCustomers)
+    asistenciaCustomers.forEach(c => clients.add(c));
     const sortFn = (a, b) => a.localeCompare(b, 'es', { sensitivity: 'base' });
     bugClientOptions = [...clients].sort(sortFn);
     bugAssigneeOptions = [...assignees].sort(sortFn);
 }
 
 let bugClientOptions = [];
+let asistenciaCustomers = []; // cached customer list from Asistencia /api/customers
+async function loadAsistenciaCustomers() {
+    try {
+        const headers = {};
+        const token = (typeof Auth !== 'undefined' && Auth._token) || localStorage.getItem('bugtracker_token');
+        if (token) headers['Authorization'] = 'Bearer ' + token;
+        const res = await fetch('/api/customers', { headers });
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        const data = await res.json();
+        asistenciaCustomers = Array.isArray(data.customers) ? data.customers : [];
+        console.log('[Asistencia] loaded', asistenciaCustomers.length, 'customers');
+    } catch (err) {
+        console.warn('[Asistencia] customer fetch failed:', err.message);
+        asistenciaCustomers = [];
+    }
+}
 let bugAssigneeOptions = [];
 
 // Generic autocomplete attach.
@@ -2399,6 +2417,7 @@ initEvents();
         await Auth.loadFromServer();
         await Store.loadFromServer();
         Store.ensureDefaultVersion();
+        loadAsistenciaCustomers(); // fire-and-forget: prime customer autocomplete from Asistencia
         console.log('[Sync] Datos sincronizados con el servidor');
 
         // Periodic sync: pull from server every 30s
@@ -2410,6 +2429,8 @@ initEvents();
                 render();
             } catch {}
         }, 30000);
+        // Refresh Asistencia customers every 5 min (cheap, picks up new customers)
+        setInterval(loadAsistenciaCustomers, 5 * 60 * 1000);
     }
 
     // NOW show the correct auth UI with server data loaded
