@@ -61,14 +61,14 @@
           "createdBy": "Mehdi",
           "createdByUser": "mehdi",
           "createdAt": 1778848965655,
-          "updatedAt": 1779805437401,
+          "updatedAt": 1779824918538,
           "id": "930fb5fd-9ec7-4d77-a63a-ecefa3eb59e6",
           "comments": [
             {
-              "id": "dd0cffb5-f96e-433a-85e2-47663fd1d7f7",
-              "author": "Sistema",
-              "text": "Funciona bien en Mitsubishi pero con Triamec está fallando la transición entre la zona óptica y la periferia",
-              "createdAt": "1779805437401"
+              "id": "d338eab9-e926-47ba-9be7-f06a1ff8953c",
+              "author": "Mehdi",
+              "text": "En la version 15.3.2.0 va bien en Mitsubishi pero con Triamec está fallando la transición entre la zona óptica y la periferia",
+              "createdAt": "1779824918538"
             }
           ],
           "followers": []
@@ -113,7 +113,7 @@
           "title": "Referencias de las herramientas borradas",
           "description": "En esta versión se han borrado las referencias de los diamantes y no deja meterlas de nuevo.",
           "priority": "medium",
-          "status": "in-progress",
+          "status": "passed",
           "tags": [],
           "locked": false,
           "assignee": "Fran",
@@ -122,8 +122,12 @@
           "createdBy": "Mehdi",
           "createdByUser": "mehdi",
           "createdAt": 1778852617291,
-          "updatedAt": 1779805277762,
+          "updatedAt": 1779824680657,
           "id": "a8f070c5-2aed-4300-a5e0-0bc82f242621",
+          "resolvedBy": "Fran",
+          "resolvedAt": "1779824680657",
+          "resolvedVersion": "15.2.13.0",
+          "resolvedByUser": "Mehdi",
           "comments": [],
           "followers": []
         },
@@ -394,7 +398,7 @@
         {
           "title": "Chuck IOL Bruno Sena",
           "description": "Preparar 50 unidades para Side 1 y 10 unidades para Side 2 según planos enviados por el cliente",
-          "priority": "critical",
+          "priority": "high",
           "status": "in-progress",
           "tags": [],
           "locked": false,
@@ -404,7 +408,7 @@
           "createdBy": "Mehdi",
           "createdByUser": "mehdi",
           "createdAt": 1779785401178,
-          "updatedAt": 1779785401178,
+          "updatedAt": 1779819219715,
           "id": "79b59b28-0968-44dd-be24-12a90abaf211",
           "comments": [],
           "followers": []
