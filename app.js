@@ -1658,7 +1658,12 @@ ${bugs.map((b, i) => {
     const statusClass = b.status === 'open' ? 'badge-new' : b.status === 'in-progress' ? 'badge-progress' : b.status === 'passed' ? 'badge-passed' : 'badge-failed';
     const priorityClass = 'priority-' + b.priority;
     const assignees = getAssignees(b).join(', ');
-    const created = b.createdAt ? new Date(b.createdAt).toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' }) : '—';
+    const fmtReport = (ts) => {
+        const d = toDate(ts);
+        return d ? d.toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' }) : '—';
+    };
+    const created = fmtReport(b.createdAt);
+    const resolvedDate = b.resolvedAt ? fmtReport(b.resolvedAt) : null;
     let card = '<div class="task-card">';
     card += '<div class="task-header">';
     card += '<span class="task-num">' + (i + 1) + '</span>';
@@ -1674,18 +1679,20 @@ ${bugs.map((b, i) => {
     if (b.client) card += '<span>🏢 ' + escapeHtml(b.client) + '</span>';
     if (b.swVersion) card += '<span>📌 ' + escapeHtml(b.swVersion) + '</span>';
     if (b.createdBy) card += '<span>✏️ ' + escapeHtml(b.createdBy) + '</span>';
-    card += '<span>📅 ' + created + '</span></div>';
+    card += '<span title="Fecha de creación">🟢 Inicio: ' + created + '</span>';
+    if (resolvedDate) card += '<span title="Fecha de resolución">🏁 Fin: ' + resolvedDate + '</span>';
+    card += '</div>';
     if (b.resolvedBy) {
         card += '<div class="resolution-box">✅ Resuelta por: <strong>' + escapeHtml(b.resolvedBy) + '</strong>';
         if (b.resolvedVersion) card += ' · Versión: <strong>' + escapeHtml(b.resolvedVersion) + '</strong>';
-        if (b.resolvedAt) card += ' · ' + new Date(b.resolvedAt).toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' });
+        if (resolvedDate) card += ' · ' + resolvedDate;
         if (b.resolvedByUser) card += ' · Marcada por: ' + escapeHtml(b.resolvedByUser);
         card += '</div>';
     }
     if (includeComments && b.comments && b.comments.length > 0) {
         card += '<div class="comments-box"><div class="comments-title">💬 Comentarios (' + b.comments.length + ')</div>';
         b.comments.forEach(c => {
-            card += '<div class="comment"><span class="comment-author">' + escapeHtml(c.author || 'Anónimo') + '</span> <span class="comment-date">' + new Date(c.createdAt).toLocaleDateString('es-ES') + '</span><br>' + escapeHtml(c.text) + '</div>';
+            card += '<div class="comment"><span class="comment-author">' + escapeHtml(c.author || 'Anónimo') + '</span> <span class="comment-date">' + fmtReport(c.createdAt) + '</span><br>' + escapeHtml(c.text) + '</div>';
         });
         card += '</div>';
     }
