@@ -310,6 +310,9 @@ function sanitizeStore(data) {
                 ['resolvedBy', 'resolvedAt', 'resolvedVersion', 'resolvedByUser'].forEach(k => {
                     if (b[k]) cleanB[k] = String(b[k]).slice(0, 100);
                 });
+                // Preserve Asistencia cross-app links (set when resolving a bug)
+                if (b.linkedCustomer) cleanB.linkedCustomer = String(b.linkedCustomer).slice(0, 200);
+                if (b.linkedRecordId) cleanB.linkedRecordId = String(b.linkedRecordId).slice(0, 64);
 
                 cleanB.comments = (Array.isArray(b.comments) ? b.comments : []).slice(0, 500).map(c => {
                     const out = {
@@ -762,6 +765,43 @@ const server = http.createServer(async (req, res) => {
         }
         res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'public, max-age=60' });
         res.end(JSON.stringify({ customers, source: 'asistencia', count: customers.length }));
+        return;
+    }
+
+    // GET /api/asistencia-records — read Asistencia records (cross-app integration)
+    // Optional ?cliente=<name> filter (substring, case-insensitive). Returns up to 500 records.
+    // Read-only, requires session auth. If unreachable, returns []. Used by resolve modal.
+    if (pathname === '/api/asistencia-records' && req.method === 'GET') {
+        const session = requireAuth(req);
+        if (!session) {
+            res.writeHead(401, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ error: 'No autorizado' }));
+            return;
+        }
+        const ASISTENCIA_RECORDS = '/home/wilson/asistencia-tecnica/data/records.json';
+        const clienteFilter = (url.searchParams.get('cliente') || '').trim().toLowerCase();
+        let out = [];
+        try {
+            const raw = fs.readFileSync(ASISTENCIA_RECORDS, 'utf8');
+            const records = JSON.parse(raw);
+            const filtered = clienteFilter
+                ? records.filter(r => r && r.cliente && String(r.cliente).toLowerCase().includes(clienteFilter))
+                : records;
+            // Sort newest first, cap at 500 for autocomplete sanity
+            filtered.sort((a, b) => String(b.fecha || '').localeCompare(String(a.fecha || '')));
+            out = filtered.slice(0, 500).map(r => ({
+                id: r.id,
+                cliente: r.cliente || '',
+                torno: r.torno || '',
+                fecha: r.fecha || '',
+                tecnico: r.tecnico || '',
+                comentarios: (r.comentarios || '').slice(0, 200) // preview only
+            }));
+        } catch (err) {
+            console.warn('[/api/asistencia-records] Asistencia data unavailable:', err.message);
+        }
+        res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'public, max-age=60' });
+        res.end(JSON.stringify({ records: out, count: out.length }));
         return;
     }
 

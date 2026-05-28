@@ -3,3 +3,4 @@ data/sessions.json
 data/backups/
 data/*.corrupted
 data/*.bak
+graphify-out/

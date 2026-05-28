@@ -461,6 +461,10 @@
                         style="font-size:0.75rem;padding:0.3rem 0.7rem">
                         ✏️ Editar
                     </button>
+                    <button class="btn-secondary btn-sm" id="btn-detail-link" title="Vincular con Asistencia"
+                        style="font-size:0.75rem;padding:0.3rem 0.7rem;display:none">
+                        🔗 Asistencia
+                    </button>
                     <button class="btn-secondary btn-sm" id="btn-detail-reopen" title="Reabrir tarea"
                         style="font-size:0.75rem;padding:0.3rem 0.7rem;display:none">
                         ↩ Reabrir
@@ -603,6 +607,44 @@
         </div>
     </div>
 
+    <!-- Modal: Edit Asistencia Links (for already-resolved tasks) -->
+    <div class="modal-overlay" id="modal-edit-links">
+        <div class="modal modal-sm">
+            <div class="modal-header">
+                <h3>🔗 Vincular con Asistencia</h3>
+                <button class="btn-icon modal-close" data-modal="modal-edit-links">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                        <line x1="18" y1="6" x2="6" y2="18" />
+                        <line x1="6" y1="6" x2="18" y2="18" />
+                    </svg>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div style="font-size:12px;color:var(--text-muted);margin-bottom:8px">Editar enlaces a Asistencia para esta tarea resuelta.</div>
+                <div class="form-group">
+                    <label for="link-customer">Cliente Asistencia</label>
+                    <div class="autocomplete-wrap" style="position:relative">
+                        <input type="text" id="link-customer" placeholder="Buscar cliente..." autocomplete="off">
+                        <div id="link-customer-suggest" class="autocomplete-list" style="display:none"></div>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="link-record">Registro Asistencia (visita específica)</label>
+                    <div class="autocomplete-wrap" style="position:relative">
+                        <input type="text" id="link-record" placeholder="Selecciona un cliente primero..." autocomplete="off" disabled>
+                        <div id="link-record-suggest" class="autocomplete-list" style="display:none"></div>
+                    </div>
+                    <div id="link-record-selected" style="font-size:11px;color:var(--text-muted);margin-top:4px"></div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-secondary" id="btn-clear-links" style="margin-right:auto">Quitar vínculos</button>
+                <button class="btn-secondary" data-modal="modal-edit-links">Cancelar</button>
+                <button class="btn-primary" id="btn-save-links">Guardar</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Modal: Resolve Task -->
     <div class="modal-overlay" id="modal-resolve">
         <div class="modal modal-sm">
@@ -619,11 +661,35 @@
             <div class="modal-body">
                 <div class="form-group">
                     <label for="resolve-who">¿Quién la resolvió?</label>
-                    <input type="text" id="resolve-who" placeholder="Nombre de quien resolvió..." autocomplete="off">
+                    <div class="autocomplete-wrap" style="position:relative">
+                        <input type="text" id="resolve-who" placeholder="Nombre de quien resolvió..." autocomplete="off">
+                        <div id="resolve-who-suggest" class="autocomplete-list" style="display:none"></div>
+                    </div>
                 </div>
                 <div class="form-group">
                     <label for="resolve-version">Versión donde se resolvió</label>
                     <input type="text" id="resolve-version" placeholder="Ej: v2.1.4" autocomplete="off">
+                </div>
+                <div class="form-group">
+                    <label for="resolve-date">Fecha de resolución</label>
+                    <input type="date" id="resolve-date" autocomplete="off">
+                </div>
+                <hr style="border:none;border-top:1px solid var(--bg-input);margin:16px 0">
+                <div style="font-size:12px;color:var(--text-muted);margin-bottom:8px">🔗 Vincular con Asistencia (opcional)</div>
+                <div class="form-group">
+                    <label for="resolve-customer">Cliente Asistencia</label>
+                    <div class="autocomplete-wrap" style="position:relative">
+                        <input type="text" id="resolve-customer" placeholder="Buscar cliente..." autocomplete="off">
+                        <div id="resolve-customer-suggest" class="autocomplete-list" style="display:none"></div>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="resolve-record">Registro Asistencia (visita específica)</label>
+                    <div class="autocomplete-wrap" style="position:relative">
+                        <input type="text" id="resolve-record" placeholder="Selecciona un cliente primero..." autocomplete="off" disabled>
+                        <div id="resolve-record-suggest" class="autocomplete-list" style="display:none"></div>
+                    </div>
+                    <div id="resolve-record-selected" style="font-size:11px;color:var(--text-muted);margin-top:4px"></div>
                 </div>
             </div>
             <div class="modal-footer">

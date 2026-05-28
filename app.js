@@ -425,7 +425,12 @@ function toDate(ts) {
 function formatDate(ts) {
     const d = toDate(ts);
     if (!d) return '—';
-    return d.toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+    // Only admins see the time; other users see date only
+    const isAdmin = (typeof Auth !== 'undefined' && Auth.isAdmin);
+    const opts = isAdmin
+        ? { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }
+        : { day: '2-digit', month: 'short', year: 'numeric' };
+    return d.toLocaleDateString('es-ES', opts);
 }
 
 function formatShortDate(ts) {
@@ -981,6 +986,8 @@ function openBugDetailWithContext(bugId, versionId, listId) {
         ${bug.resolvedBy ? `<span class="detail-tag" style="border-color:var(--success);color:var(--success)">✅ Resuelta por: ${escapeHtml(bug.resolvedBy)}</span>` : ''}
         ${bug.resolvedVersion ? `<span class="detail-tag" style="border-color:var(--success)">📌 Versión resolución: ${escapeHtml(bug.resolvedVersion)}</span>` : ''}
         ${bug.resolvedAt ? `<span class="detail-tag" style="border-color:var(--success)">📅 Resuelta: ${formatDate(bug.resolvedAt)}</span>` : ''}
+        ${bug.linkedCustomer ? `<a class="detail-tag" style="border-color:var(--accent);color:var(--accent);text-decoration:none" href="/asistencia/?cliente=${encodeURIComponent(bug.linkedCustomer)}" target="_blank">🏢 ${escapeHtml(bug.linkedCustomer)}</a>` : ''}
+        ${bug.linkedRecordId ? `<a class="detail-tag" style="border-color:var(--accent);color:var(--accent);text-decoration:none;cursor:pointer" href="/asistencia/?record=${encodeURIComponent(bug.linkedRecordId)}" target="_blank" rel="noopener" onclick="event.preventDefault();window.open(this.href,'asistencia_record_${bug.linkedRecordId}','noopener')">📋 Asistencia registrada</a>` : ''}
         ${bug.resolvedByUser ? `<span class="detail-tag" style="border-color:var(--success)">👤 Marcada por: ${escapeHtml(bug.resolvedByUser)}</span>` : ''}
     `;
     // Show/hide admin "Reabrir" button in detail header
@@ -998,6 +1005,12 @@ function openBugDetailWithContext(bugId, versionId, listId) {
                 render();
             });
         };
+    }
+    // Show/hide "Editar vínculos" button — only for resolved tasks
+    const linkBtn = $('#btn-detail-link');
+    if (linkBtn) {
+        linkBtn.style.display = bug.resolvedBy ? '' : 'none';
+        linkBtn.onclick = () => openEditLinksModal(bugId, versionId, listId, bug);
     }
     $('#detail-description').textContent = bug.description || 'Sin descripción';
     renderComments(bug);
@@ -1236,8 +1249,215 @@ function openResolveModal(bugId, versionId, listId) {
     resolvingListId = listId;
     $('#resolve-who').value = '';
     $('#resolve-version').value = '';
+    // Default date to today (local timezone) in YYYY-MM-DD
+    const today = new Date();
+    const yyyy = today.getFullYear();
+    const mm = String(today.getMonth() + 1).padStart(2, '0');
+    const dd = String(today.getDate()).padStart(2, '0');
+    $('#resolve-date').value = `${yyyy}-${mm}-${dd}`;
+    // Populate "who" autocomplete with known assignees + Asistencia technicians
+    populateBugDatalists();
+    attachAutocomplete({
+        input: $('#resolve-who'),
+        box: $('#resolve-who-suggest'),
+        getOptions: () => bugAssigneeOptions,
+        multi: false
+    });
+    // === Asistencia link fields ===
+    $('#resolve-customer').value = '';
+    $('#resolve-record').value = '';
+    $('#resolve-record').disabled = true;
+    $('#resolve-record').placeholder = 'Selecciona un cliente primero...';
+    $('#resolve-record-selected').textContent = '';
+    resolvingLinkedRecordId = null;
+    asistenciaRecordsCache = [];
+    // Refresh Asistencia customers if we don't have them yet
+    if (!asistenciaCustomers || asistenciaCustomers.length === 0) {
+        loadAsistenciaCustomers().then(() => populateBugDatalists());
+    }
+    // Customer autocomplete uses the same merged pool as the rest of the app
+    attachAutocomplete({
+        input: $('#resolve-customer'),
+        box: $('#resolve-customer-suggest'),
+        getOptions: () => bugClientOptions,
+        multi: false
+    });
+    // When customer changes → enable record field + lazy-load records for that customer
+    $('#resolve-customer').addEventListener('change', onResolveCustomerChange);
+    $('#resolve-customer').addEventListener('blur', onResolveCustomerChange);
+    // Record autocomplete: shows fecha · tecnico · torno
+    attachAutocomplete({
+        input: $('#resolve-record'),
+        box: $('#resolve-record-suggest'),
+        getOptions: () => asistenciaRecordsCache.map(formatRecordOption),
+        multi: false
+    });
+    $('#resolve-record').addEventListener('change', onResolveRecordChange);
+    $('#resolve-record').addEventListener('blur', onResolveRecordChange);
     openModal('modal-resolve');
     setTimeout(() => $('#resolve-who').focus(), 100);
+}
+
+// === Asistencia record-link helpers ===
+let resolvingLinkedRecordId = null;
+let asistenciaRecordsCache = [];
+
+function formatRecordOption(r) {
+    // e.g. "2026-05-28 · MEHDI · R400-107"
+    return `${r.fecha || '—'} · ${r.tecnico || '—'} · ${r.torno || '—'}`;
+}
+
+async function onResolveCustomerChange() {
+    const customer = $('#resolve-customer').value.trim();
+    const recordInput = $('#resolve-record');
+    if (!customer) {
+        recordInput.disabled = true;
+        recordInput.value = '';
+        recordInput.placeholder = 'Selecciona un cliente primero...';
+        $('#resolve-record-selected').textContent = '';
+        resolvingLinkedRecordId = null;
+        asistenciaRecordsCache = [];
+        return;
+    }
+    recordInput.placeholder = 'Cargando registros...';
+    try {
+        const headers = {};
+        const token = (typeof Auth !== 'undefined' && Auth._token) || localStorage.getItem('bugtracker_token');
+        if (token) headers['Authorization'] = 'Bearer ' + token;
+        const res = await fetch('/api/asistencia-records?cliente=' + encodeURIComponent(customer), { headers });
+        const data = await res.json();
+        asistenciaRecordsCache = Array.isArray(data.records) ? data.records : [];
+        recordInput.disabled = asistenciaRecordsCache.length === 0;
+        recordInput.placeholder = asistenciaRecordsCache.length === 0
+            ? 'Sin registros para este cliente'
+            : `Buscar entre ${asistenciaRecordsCache.length} registros (fecha · técnico · torno)`;
+    } catch (err) {
+        console.warn('[Asistencia] records fetch failed:', err.message);
+        asistenciaRecordsCache = [];
+        recordInput.disabled = true;
+        recordInput.placeholder = 'Error al cargar registros';
+    }
+}
+
+function onResolveRecordChange() {
+    const val = $('#resolve-record').value.trim();
+    if (!val) {
+        resolvingLinkedRecordId = null;
+        $('#resolve-record-selected').textContent = '';
+        return;
+    }
+    const match = asistenciaRecordsCache.find(r => formatRecordOption(r) === val);
+    if (match) {
+        resolvingLinkedRecordId = match.id;
+        const preview = (match.comentarios || '').slice(0, 80);
+        $('#resolve-record-selected').textContent = '✓ ' + (preview || 'Registro seleccionado');
+    } else {
+        resolvingLinkedRecordId = null;
+        $('#resolve-record-selected').textContent = '';
+    }
+}
+
+// === Edit-links modal (for already-resolved tasks) ===
+let editingLinksBugCtx = null; // { bugId, versionId, listId }
+let editingLinkedRecordId = null;
+let editingRecordsCache = [];
+
+function openEditLinksModal(bugId, versionId, listId, bug) {
+    editingLinksBugCtx = { bugId, versionId, listId };
+    editingLinkedRecordId = bug.linkedRecordId || null;
+    editingRecordsCache = [];
+    $('#link-customer').value = bug.linkedCustomer || '';
+    $('#link-record').value = '';
+    $('#link-record').disabled = true;
+    $('#link-record').placeholder = 'Selecciona un cliente primero...';
+    $('#link-record-selected').textContent = '';
+    // Ensure customer pool is populated (this fills bugClientOptions with BT clients + Asistencia customers)
+    populateBugDatalists();
+    if (!asistenciaCustomers || asistenciaCustomers.length === 0) {
+        loadAsistenciaCustomers().then(() => populateBugDatalists());
+    }
+    attachAutocomplete({
+        input: $('#link-customer'),
+        box: $('#link-customer-suggest'),
+        getOptions: () => bugClientOptions,
+        multi: false
+    });
+    $('#link-customer').addEventListener('change', onEditLinkCustomerChange);
+    $('#link-customer').addEventListener('blur', onEditLinkCustomerChange);
+    attachAutocomplete({
+        input: $('#link-record'),
+        box: $('#link-record-suggest'),
+        getOptions: () => editingRecordsCache.map(formatRecordOption),
+        multi: false
+    });
+    $('#link-record').addEventListener('change', onEditLinkRecordChange);
+    $('#link-record').addEventListener('blur', onEditLinkRecordChange);
+    // Pre-load if there's already a customer (so the record field activates immediately)
+    if (bug.linkedCustomer) {
+        onEditLinkCustomerChange().then(() => {
+            // Pre-fill record field if a record was already linked
+            if (bug.linkedRecordId) {
+                const match = editingRecordsCache.find(r => r.id === bug.linkedRecordId);
+                if (match) {
+                    $('#link-record').value = formatRecordOption(match);
+                    const preview = (match.comentarios || '').slice(0, 80);
+                    $('#link-record-selected').textContent = '✓ ' + (preview || 'Registro seleccionado');
+                }
+            }
+        });
+    }
+    openModal('modal-edit-links');
+    setTimeout(() => $('#link-customer').focus(), 100);
+}
+
+async function onEditLinkCustomerChange() {
+    const customer = $('#link-customer').value.trim();
+    const recordInput = $('#link-record');
+    if (!customer) {
+        recordInput.disabled = true;
+        recordInput.value = '';
+        recordInput.placeholder = 'Selecciona un cliente primero...';
+        $('#link-record-selected').textContent = '';
+        editingLinkedRecordId = null;
+        editingRecordsCache = [];
+        return;
+    }
+    recordInput.placeholder = 'Cargando registros...';
+    try {
+        const headers = {};
+        const token = (typeof Auth !== 'undefined' && Auth._token) || localStorage.getItem('bugtracker_token');
+        if (token) headers['Authorization'] = 'Bearer ' + token;
+        const res = await fetch('/api/asistencia-records?cliente=' + encodeURIComponent(customer), { headers });
+        const data = await res.json();
+        editingRecordsCache = Array.isArray(data.records) ? data.records : [];
+        recordInput.disabled = editingRecordsCache.length === 0;
+        recordInput.placeholder = editingRecordsCache.length === 0
+            ? 'Sin registros para este cliente'
+            : `Buscar entre ${editingRecordsCache.length} registros (fecha · técnico · torno)`;
+    } catch (err) {
+        console.warn('[Asistencia] records fetch failed:', err.message);
+        editingRecordsCache = [];
+        recordInput.disabled = true;
+        recordInput.placeholder = 'Error al cargar registros';
+    }
+}
+
+function onEditLinkRecordChange() {
+    const val = $('#link-record').value.trim();
+    if (!val) {
+        editingLinkedRecordId = null;
+        $('#link-record-selected').textContent = '';
+        return;
+    }
+    const match = editingRecordsCache.find(r => formatRecordOption(r) === val);
+    if (match) {
+        editingLinkedRecordId = match.id;
+        const preview = (match.comentarios || '').slice(0, 80);
+        $('#link-record-selected').textContent = '✓ ' + (preview || 'Registro seleccionado');
+    } else {
+        editingLinkedRecordId = null;
+        $('#link-record-selected').textContent = '';
+    }
 }
 
 function populateBugDatalists() {
@@ -1250,6 +1470,8 @@ function populateBugDatalists() {
     });
     // Merge in Asistencia customers (fetched once, cached in asistenciaCustomers)
     asistenciaCustomers.forEach(c => clients.add(c));
+    // Seed assignees with known technicians (for resolve-who autocomplete)
+    ['Mehdi', 'Ricardo', 'Felix', 'Marcelo', 'Victor'].forEach(t => assignees.add(t));
     const sortFn = (a, b) => a.localeCompare(b, 'es', { sensitivity: 'base' });
     bugClientOptions = [...clients].sort(sortFn);
     bugAssigneeOptions = [...assignees].sort(sortFn);
@@ -1806,14 +2028,27 @@ function initEvents() {
         const who = $('#resolve-who').value.trim();
         if (!who) { $('#resolve-who').focus(); return; }
         const version = $('#resolve-version').value.trim();
+        const dateStr = $('#resolve-date').value;
+        let resolvedAt = Date.now();
+        if (dateStr) {
+            // Parse YYYY-MM-DD as local date; preserve time-of-day so same-day resolves keep "now"
+            const [y, m, d] = dateStr.split('-').map(Number);
+            const now = new Date();
+            const picked = new Date(y, m - 1, d, now.getHours(), now.getMinutes(), now.getSeconds());
+            // If user picked today, use exact now; otherwise end-of-day on picked date so sort order makes sense
+            const isToday = y === now.getFullYear() && (m - 1) === now.getMonth() && d === now.getDate();
+            resolvedAt = isToday ? now.getTime() : new Date(y, m - 1, d, 23, 59, 0).getTime();
+        }
         const vId = resolvingVersionId || Store.data.activeVersionId;
         const lId = resolvingListId || Store.data.activeListId;
         Store.updateBug(vId, lId, resolvingBugId, {
             resolvedBy: who,
             resolvedVersion: version,
-            resolvedAt: Date.now(),
+            resolvedAt: resolvedAt,
             resolvedByUser: Auth.user?.name || 'Desconocido',
-            status: 'passed'
+            status: 'passed',
+            linkedCustomer: $('#resolve-customer').value.trim() || null,
+            linkedRecordId: resolvingLinkedRecordId || null
         });
         closeModal('modal-resolve');
         render();
@@ -1821,6 +2056,31 @@ function initEvents() {
     // Enter key in resolve modal
     $('#resolve-who').addEventListener('keydown', (e) => { if (e.key === 'Enter') $('#resolve-version').focus(); });
     $('#resolve-version').addEventListener('keydown', (e) => { if (e.key === 'Enter') $('#btn-confirm-resolve').click(); });
+
+    // Save Asistencia links from edit-links modal
+    $('#btn-save-links').addEventListener('click', () => {
+        if (!editingLinksBugCtx) return;
+        const { bugId, versionId, listId } = editingLinksBugCtx;
+        const customer = $('#link-customer').value.trim();
+        Store.updateBug(versionId, listId, bugId, {
+            linkedCustomer: customer || null,
+            linkedRecordId: editingLinkedRecordId || null
+        });
+        closeModal('modal-edit-links');
+        // Reopen detail to reflect changes
+        openBugDetailWithContext(bugId, versionId, listId);
+    });
+    // Clear both links
+    $('#btn-clear-links').addEventListener('click', () => {
+        if (!editingLinksBugCtx) return;
+        const { bugId, versionId, listId } = editingLinksBugCtx;
+        Store.updateBug(versionId, listId, bugId, {
+            linkedCustomer: null,
+            linkedRecordId: null
+        });
+        closeModal('modal-edit-links');
+        openBugDetailWithContext(bugId, versionId, listId);
+    });
 
     // Edit from detail modal
     $('#btn-detail-edit').addEventListener('click', () => {
